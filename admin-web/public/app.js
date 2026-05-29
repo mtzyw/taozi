@@ -959,6 +959,12 @@ function orderFulfillmentText(order) {
   return [order.fulfillmentStart, order.fulfillmentEnd].filter(Boolean).join(' 至 ') || '-';
 }
 
+function displayDateTime(value) {
+  const text = String(value || '').trim();
+  if (!text) return '-';
+  return text.replace('T', ' ').replace(/\.\d{3}Z$/, '').replace(/Z$/, '');
+}
+
 function isTextDateInRange(value, start, end) {
   const text = String(value || '').trim();
   if (!text) return !start && !end;
@@ -1178,6 +1184,8 @@ function renderOrders() {
           <col style="width: 90px" />
           <col style="width: 112px" />
           <col style="width: 112px" />
+          <col style="width: 150px" />
+          <col style="width: 150px" />
           <col style="width: 210px" />
         </colgroup>
         <thead>
@@ -1192,6 +1200,8 @@ function renderOrders() {
             <th>订单状态</th>
             <th>履约开始</th>
             <th>履约截止</th>
+            <th>下单时间</th>
+            <th>付款时间</th>
             <th>操作</th>
           </tr>
         </thead>
@@ -1223,6 +1233,8 @@ function renderOrders() {
         <td title="${escapeHtml(afterSaleText)}"><span class="status-pill">${escapeHtml(orderFulfillmentStatusText(order))}</span></td>
         <td class="cell-ellipsis" title="${escapeHtml(order.fulfillmentStart || '-')}">${escapeHtml(order.fulfillmentStart || '-')}</td>
         <td class="cell-ellipsis" title="${escapeHtml(order.fulfillmentEnd || '-')}">${escapeHtml(order.fulfillmentEnd || '-')}</td>
+        <td class="cell-ellipsis" title="${escapeHtml(displayDateTime(order.createdAt))}">${escapeHtml(displayDateTime(order.createdAt))}</td>
+        <td class="cell-ellipsis" title="${escapeHtml(displayDateTime(order.paidAt))}">${escapeHtml(displayDateTime(order.paidAt))}</td>
         <td>
           <div class="order-table-actions">
             <button class="link-btn" data-action="view-order" data-id="${orderId}">查看详情</button>
@@ -1458,7 +1470,7 @@ function csvEscape(value) {
 }
 
 function ordersToCsvText(orders) {
-  const header = ['批次名称', '销售类型', '订单联系人', '手机号', '订单编号', '配送方式', '自提点/快递地址', '订单状态', '商品', '规格', '数量', '实付元', '下单时间'];
+  const header = ['批次名称', '销售类型', '订单联系人', '手机号', '订单编号', '配送方式', '自提点/快递地址', '订单状态', '商品', '规格', '数量', '实付元', '下单时间', '付款时间'];
   const rows = (orders || []).map((order) => {
     const item = orderPrimaryItem(order);
     return [
@@ -1474,7 +1486,8 @@ function ordersToCsvText(orders) {
       item.skuName || item.packageLabel || '',
       item.quantity || 1,
       money(order.payAmount),
-      order.createdAt || ''
+      displayDateTime(order.createdAt),
+      displayDateTime(order.paidAt)
     ];
   });
   return `\uFEFF${[header, ...rows].map((row) => row.map(csvEscape).join(',')).join('\n')}`;
@@ -2073,6 +2086,8 @@ function bindEvents() {
           { label: '配送方式', value: deliveryTypeText(order.deliveryType) },
           { label: '自提点/地址', value: orderDestinationText(order) },
           { label: '履约时间', value: orderFulfillmentText(order) },
+          { label: '下单时间', value: displayDateTime(order.createdAt) },
+          { label: '付款时间', value: displayDateTime(order.paidAt) },
           { label: '商品', value: `${item.productName || ''}｜${item.skuName || item.packageLabel || ''} × ${item.quantity || 1}` },
           { label: '实付', value: `¥${money(order.payAmount)}（商品 ¥${money(order.goodsAmount)}，运费 ¥${money(order.shippingFee)}）` },
           { label: '状态', value: orderFulfillmentStatusText(order) },

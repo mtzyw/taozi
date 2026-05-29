@@ -659,8 +659,14 @@ function csvCell(value) {
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+function displayDateTime(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  return text.replace('T', ' ').replace(/\.\d{3}Z$/, '').replace(/Z$/, '');
+}
+
 function orderExportRows(orders) {
-  const header = ['批次名称', '销售类型', '订单联系人', '手机号', '订单编号', '配送方式', '自提点/快递地址', '订单状态', '履约开始', '履约截止', '商品', '规格', '数量', '实付元', '快递公司', '快递单号', '下单时间'];
+  const header = ['批次名称', '销售类型', '订单联系人', '手机号', '订单编号', '配送方式', '自提点/快递地址', '订单状态', '履约开始', '履约截止', '商品', '规格', '数量', '实付元', '快递公司', '快递单号', '下单时间', '付款时间'];
   const rows = orders.map((order) => {
     const item = (order.items || [])[0] || {};
     const shipment = order.expressShipment || {};
@@ -681,7 +687,8 @@ function orderExportRows(orders) {
       db.centsToYuan(order.payAmount),
       shipment.company || '',
       shipment.trackingNo || '',
-      order.createdAt || ''
+      displayDateTime(order.createdAt),
+      displayDateTime(order.paidAt)
     ];
   });
   return [header, ...rows];
