@@ -554,10 +554,18 @@ main {
 .orders-table td:nth-child(1) { min-width: 105px; }
 .orders-table td:nth-child(5) { min-width: 200px; }
 .orders-table td:nth-child(7) { min-width: 240px; }
-.orders-table td:nth-child(11) { width: 200px; }
+.orders-table td:nth-child(11),
+.orders-table td:nth-child(12) { min-width: 176px; }
+.orders-table td:nth-child(13) { width: 200px; }
 .cell-ellipsis {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.cell-time {
+  overflow: visible;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  white-space: nowrap;
 }
 .cell-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -839,7 +847,9 @@ button,
 .orders-table td:nth-child(1) { min-width: 105px; }
 .orders-table td:nth-child(5) { min-width: 200px; }
 .orders-table td:nth-child(7) { min-width: 240px; }
-.orders-table td:nth-child(11) { width: 200px; }
+.orders-table td:nth-child(11),
+.orders-table td:nth-child(12) { min-width: 176px; }
+.orders-table td:nth-child(13) { width: 200px; }
 .status-pill {
   padding: 4px 8px;
   font-size: 11px;

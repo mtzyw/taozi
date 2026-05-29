@@ -1184,8 +1184,8 @@ function renderOrders() {
           <col style="width: 90px" />
           <col style="width: 112px" />
           <col style="width: 112px" />
-          <col style="width: 150px" />
-          <col style="width: 150px" />
+          <col style="width: 176px" />
+          <col style="width: 176px" />
           <col style="width: 210px" />
         </colgroup>
         <thead>
@@ -1233,8 +1233,8 @@ function renderOrders() {
         <td title="${escapeHtml(afterSaleText)}"><span class="status-pill">${escapeHtml(orderFulfillmentStatusText(order))}</span></td>
         <td class="cell-ellipsis" title="${escapeHtml(order.fulfillmentStart || '-')}">${escapeHtml(order.fulfillmentStart || '-')}</td>
         <td class="cell-ellipsis" title="${escapeHtml(order.fulfillmentEnd || '-')}">${escapeHtml(order.fulfillmentEnd || '-')}</td>
-        <td class="cell-ellipsis" title="${escapeHtml(displayDateTime(order.createdAt))}">${escapeHtml(displayDateTime(order.createdAt))}</td>
-        <td class="cell-ellipsis" title="${escapeHtml(displayDateTime(order.paidAt))}">${escapeHtml(displayDateTime(order.paidAt))}</td>
+        <td class="cell-time" title="${escapeHtml(displayDateTime(order.createdAt))}">${escapeHtml(displayDateTime(order.createdAt))}</td>
+        <td class="cell-time" title="${escapeHtml(displayDateTime(order.paidAt))}">${escapeHtml(displayDateTime(order.paidAt))}</td>
         <td>
           <div class="order-table-actions">
             <button class="link-btn" data-action="view-order" data-id="${orderId}">查看详情</button>
