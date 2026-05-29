@@ -42,7 +42,9 @@ h2 { margin: 0; font-size: 26px; }
 .db-card span { display: block; color: var(--brand); font-weight: 900; }
 .db-card strong { display: block; margin-top: 10px; color: var(--muted); font-size: 13px; word-break: break-all; }
 .auth-hint { margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.session-actions { min-width: 120px; display: flex; align-items: flex-start; justify-content: flex-end; }
 .small { margin-top: 12px; padding: 8px 12px; font-size: 12px; }
+.session-actions .small { margin-top: 0; }
 .login-panel { margin-top: 22px; max-width: 520px; }
 .login-form { display: grid; gap: 16px; margin-top: 18px; }
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin: 22px 0; }

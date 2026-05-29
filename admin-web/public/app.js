@@ -447,8 +447,7 @@ function setAdminVisible(visible) {
 
 function showLogin(message = '') {
   setAdminVisible(false);
-  $('#dbPath').textContent = '待登录';
-  $('#authHint').textContent = message || '已启用后台账号密码保护';
+  if (message) toast(message);
   const logoutBtn = $('#logoutBtn');
   if (logoutBtn) logoutBtn.hidden = true;
 }
@@ -456,13 +455,10 @@ function showLogin(message = '') {
 function showAdmin(session) {
   state.session = session;
   setAdminVisible(true);
-  const authHint = $('#authHint');
   const logoutBtn = $('#logoutBtn');
   if (session.authRequired) {
-    authHint.textContent = '后台账号密码保护已启用';
     if (logoutBtn) logoutBtn.hidden = false;
   } else {
-    authHint.textContent = '开发模式：未设置 PEACH_ADMIN_PASSWORD，后台 API 暂不要求登录';
     if (logoutBtn) logoutBtn.hidden = true;
   }
 }
@@ -603,7 +599,6 @@ function renderStats() {
     ['订单数', stats.orderCount || 0],
     ['未退款销售额', `¥${stats.revenueText || '0.00'}`]
   ].map(([label, value]) => `<div class="stat"><b>${value}</b><span>${label}</span></div>`).join('');
-  $('#dbPath').textContent = state.dbPath || '未初始化';
 }
 
 function renderDashboard() {
