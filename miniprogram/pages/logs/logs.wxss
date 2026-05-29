@@ -1,0 +1,8 @@
+.log-card {
+  margin-bottom: 20rpx;
+  padding: 28rpx 32rpx;
+  border-radius: 20rpx;
+  background: #ffffff;
+  color: #4e5969;
+  font-size: 28rpx;
+}

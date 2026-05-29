@@ -1,0 +1,25 @@
+<view wx:if="{{order}}" class="container success-page">
+  <view class="success-card">
+    <view class="success-icon">✓</view>
+    <text class="success-title">支付成功</text>
+    <text class="success-desc">订单已提交，商家会按预售批次安排自提或发货。</text>
+  </view>
+
+  <view class="order-card">
+    <text class="section-title">订单信息</text>
+    <view class="line"><text>订单号</text><text>{{order.id}}</text></view>
+    <view class="line"><text>手机号</text><text>{{order.maskedPhone}}</text></view>
+    <view class="line"><text>商品</text><text>{{order.items[0].productName}}</text></view>
+    <view class="line"><text>规格</text><text>{{order.items[0].skuName || order.items[0].packageLabel}} × {{order.items[0].quantity}}</text></view>
+    <view class="line"><text>状态</text><text>{{order.statusText}}</text></view>
+    <view class="line"><text>履约</text><text>{{order.fulfillmentText}}</text></view>
+    <view wx:if="{{order.expressText}}" class="line"><text>收货</text><text>{{order.expressText}}</text></view>
+    <view wx:if="{{order.pickupCodeText}}" class="line"><text>核销码</text><text>{{order.pickupCodeText}}</text></view>
+    <view class="line"><text>商品金额</text><text>¥{{order.goodsAmountText}}</text></view>
+    <view class="line"><text>{{order.shippingLabel || '运费'}}</text><text>{{order.shippingFee > 0 ? '¥' + order.shippingFeeText : '免运费'}}</text></view>
+    <view class="line pay"><text>实付</text><text>¥{{order.payAmountText}}</text></view>
+  </view>
+
+  <button class="secondary-btn detail-btn" bindtap="goOrderDetail">查看订单详情</button>
+  <button class="primary-btn" bindtap="goHome">返回首页</button>
+</view>

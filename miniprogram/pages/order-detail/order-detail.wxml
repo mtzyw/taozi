@@ -1,0 +1,88 @@
+<view wx:if="{{order}}" class="container order-detail-page">
+  <view class="status-card">
+    <view class="status-head">
+      <text class="status-text">{{order.statusText}}</text>
+      <text wx:if="{{pickupValidityText}}" class="pickup-validity">{{pickupValidityText}}</text>
+    </view>
+    <text class="status-desc">{{order.serviceText}}</text>
+  </view>
+
+  <view class="card">
+    <text class="section-title">商品信息</text>
+    <view class="line"><text>商品</text><text>{{order.itemName}}</text></view>
+    <view class="line"><text>规格</text><text>{{order.skuName}}</text></view>
+    <view wx:if="{{order.skuMeta}}" class="line"><text>规格说明</text><text>{{order.skuMeta}}</text></view>
+    <view class="line"><text>数量</text><text>× {{order.quantity}}</text></view>
+    <view class="line"><text>单价</text><text>¥{{order.unitPriceText}}</text></view>
+  </view>
+
+  <view class="card">
+    <text class="section-title">配送信息</text>
+    <view class="line"><text>方式</text><text>{{order.deliverySummary}}</text></view>
+    <view wx:if="{{order.expressText}}" class="line"><text>收货人</text><text>{{order.expressText}}</text></view>
+    <view wx:if="{{order.expressAddress}}" class="line block"><text>地址</text><text>{{order.expressAddress}}</text></view>
+    <view wx:if="{{order.pickupCodeText}}" class="line"><text>自提核销码</text><text>{{order.pickupCodeText}}</text></view>
+    <view wx:if="{{order.pickedUpAtText}}" class="line"><text>自提时间</text><text>{{order.pickedUpAtText}}</text></view>
+    <view wx:if="{{order.note}}" class="line block"><text>备注</text><text>{{order.note}}</text></view>
+  </view>
+
+  <view wx:if="{{order.deliveryType == 'express'}}" class="card logistics-card">
+    <text class="section-title">物流信息</text>
+    <view wx:if="{{order.hasExpressShipment}}" class="tracking-box">
+      <view class="tracking-row">
+        <view>
+          <text class="tracking-company">{{order.expressCompany || '快递'}}</text>
+          <text class="tracking-no" selectable="true">{{order.expressTrackingNo}}</text>
+        </view>
+        <view class="ghost-btn copy-btn" data-tracking-no="{{order.expressTrackingNo}}" catchtap="copyTrackingNo">复制单号</view>
+      </view>
+      <view wx:if="{{order.shippedAtText}}" class="line"><text>发货时间</text><text>{{order.shippedAtText}}</text></view>
+      <text class="tracking-tip">当前为基础版物流信息，暂不含实时轨迹；可复制单号到微信“查快递”或快递公司小程序查询。</text>
+    </view>
+    <view wx:else class="tracking-empty">
+      <text>商家发货并上传快递单号后，这里会显示快递公司和单号。</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <text class="section-title">金额明细</text>
+    <view wx:for="{{order.trace}}" wx:key="type" class="line discount"><text>{{item.label}}</text><text>-¥{{item.amountText}}</text></view>
+    <view class="line"><text>商品金额</text><text>¥{{order.goodsAmountText}}</text></view>
+    <view class="line"><text>{{order.shippingLabel || '运费'}}</text><text>{{order.shippingFee > 0 ? '¥' + order.shippingFeeText : '免运费'}}</text></view>
+    <view class="line pay"><text>实付金额</text><text>¥{{order.payAmountText}}</text></view>
+  </view>
+
+  <view class="card">
+    <text class="section-title">订单信息</text>
+    <view class="line"><text>订单号</text><text>{{order.id}}</text></view>
+    <view class="line"><text>下单手机</text><text>{{order.maskedPhone}}</text></view>
+    <view class="line"><text>下单时间</text><text>{{order.createdAtText}}</text></view>
+    <view wx:if="{{order.couponCode}}" class="line"><text>优惠码</text><text>{{order.couponCode}}</text></view>
+    <view wx:if="{{order.afterSaleInfo}}" class="line block"><text>售后说明</text><text>{{order.afterSaleInfo.reason}}</text></view>
+    <view wx:if="{{order.completedAtText}}" class="line"><text>完成时间</text><text>{{order.completedAtText}}</text></view>
+    <view wx:if="{{order.refundedAtText}}" class="line"><text>退款时间</text><text>{{order.refundedAtText}}</text></view>
+    <view wx:if="{{order.cancelledAtText}}" class="line"><text>取消时间</text><text>{{order.cancelledAtText}}</text></view>
+  </view>
+
+  <view wx:if="{{order.canApplyAfterSale || order.afterSaleInfo || order.afterSaleTip}}" class="card">
+    <text class="section-title">售后服务</text>
+    <view wx:if="{{order.afterSaleInfo}}" class="line block"><text>当前售后</text><text>{{order.afterSaleInfo.status || '处理中'}}｜{{order.afterSaleInfo.reason}}</text></view>
+    <view wx:if="{{order.afterSaleInfo && order.afterSaleInfo.refundAmountText}}" class="line"><text>退款金额</text><text>¥{{order.afterSaleInfo.refundAmountText}}</text></view>
+    <text wx:if="{{order.afterSaleTip && !order.afterSaleInfo && !order.canApplyAfterSale}}" class="after-sale-tip">{{order.afterSaleTip}}</text>
+    <view wx:if="{{order.canApplyAfterSale && !order.afterSaleInfo}}" class="after-sale-form">
+      <textarea class="after-sale-input" maxlength="160" placeholder="请填写退款/售后原因" value="{{afterSaleReason}}" bindinput="onAfterSaleReasonInput"></textarea>
+      <button class="ghost-btn" loading="{{isSubmittingAfterSale}}" bindtap="applyAfterSale">申请售后</button>
+    </view>
+  </view>
+
+  <view wx:if="{{order.fulfillmentLogs.length}}" class="card">
+    <text class="section-title">履约记录</text>
+    <view wx:for="{{order.fulfillmentLogs}}" wx:key="createdAt" class="log-line">
+      <text>{{item.actionText}}｜{{item.createdAtText}}</text>
+      <text wx:if="{{item.detail}}">{{item.detail}}</text>
+    </view>
+  </view>
+
+  <button class="primary-btn" bindtap="backOrders">返回订单</button>
+  <button class="ghost-btn more-btn" bindtap="goProducts">继续逛商品</button>
+</view>

@@ -1,0 +1,211 @@
+.status-card,
+.card {
+  margin-bottom: 24rpx;
+  padding: 32rpx;
+  border-radius: 32rpx;
+  background: #ffffff;
+  box-shadow: 0 14rpx 42rpx rgba(66, 38, 28, 0.07);
+}
+
+.status-card {
+  background: linear-gradient(145deg, #ffe5de 0%, #fff8f1 100%);
+}
+
+.status-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.status-text,
+.status-desc,
+.section-title {
+  display: block;
+}
+
+.status-text {
+  color: #e54862;
+  font-size: 44rpx;
+  font-weight: 900;
+}
+
+.pickup-validity {
+  flex-shrink: 0;
+  max-width: 260rpx;
+  padding: 10rpx 16rpx;
+  border-radius: 999rpx;
+  color: #e54862;
+  background: rgba(255, 255, 255, 0.78);
+  font-size: 22rpx;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.status-desc {
+  margin-top: 12rpx;
+  color: #7b5b54;
+  font-size: 25rpx;
+  line-height: 1.55;
+}
+
+.section-title {
+  margin-bottom: 20rpx;
+  color: #2f1f1c;
+  font-size: 32rpx;
+  font-weight: 900;
+}
+
+.line {
+  display: flex;
+  justify-content: space-between;
+  gap: 24rpx;
+  margin-top: 18rpx;
+  color: #7b5b54;
+  font-size: 25rpx;
+  line-height: 1.5;
+}
+
+.line text:last-child {
+  flex: 1;
+  color: #2f1f1c;
+  font-weight: 700;
+  text-align: right;
+}
+
+.line.block {
+  align-items: flex-start;
+}
+
+.discount,
+.discount text:last-child {
+  color: #e54862;
+}
+
+.line.pay {
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid #f3e2dc;
+  color: #2f1f1c;
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.line.pay text:last-child {
+  color: #e54862;
+}
+
+.logistics-card {
+  border: 2rpx solid #ffe1d8;
+}
+
+.tracking-box {
+  padding: 20rpx;
+  border-radius: 24rpx;
+  background: #fff8f5;
+}
+
+.tracking-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.tracking-company,
+.tracking-no,
+.tracking-tip,
+.tracking-empty text {
+  display: block;
+}
+
+.tracking-company {
+  color: #2f1f1c;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.tracking-no {
+  margin-top: 8rpx;
+  color: #7b5b54;
+  font-size: 25rpx;
+  font-weight: 800;
+  word-break: break-all;
+}
+
+.copy-btn {
+  flex-shrink: 0;
+  min-width: 148rpx;
+  height: 64rpx;
+  margin: 0;
+  padding: 0 22rpx;
+  font-size: 24rpx;
+}
+
+.tracking-tip,
+.tracking-empty text {
+  margin-top: 16rpx;
+  color: #8a6d64;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.tracking-empty {
+  padding: 20rpx;
+  border-radius: 22rpx;
+  background: #fff8f5;
+}
+
+.more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  line-height: 1;
+  margin-top: 18rpx;
+}
+
+.log-line {
+  margin-top: 16rpx;
+  padding: 18rpx;
+  border-radius: 18rpx;
+  background: #fff8f5;
+  color: #7b5b54;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.log-line text {
+  display: block;
+}
+
+.log-line text:first-child {
+  color: #2f1f1c;
+  font-weight: 800;
+}
+
+.after-sale-form {
+  display: grid;
+  gap: 18rpx;
+}
+
+.after-sale-tip {
+  display: block;
+  padding: 18rpx 20rpx;
+  border-radius: 20rpx;
+  background: #fff8f5;
+  color: #8f6f67;
+  font-size: 25rpx;
+  line-height: 1.45;
+}
+
+.after-sale-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 150rpx;
+  padding: 20rpx;
+  border-radius: 22rpx;
+  background: #fff8f5;
+  font-size: 26rpx;
+}

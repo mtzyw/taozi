@@ -1,0 +1,86 @@
+.success-card,
+.order-card {
+  margin-bottom: 24rpx;
+  padding: 34rpx;
+  border-radius: 32rpx;
+  background: #ffffff;
+  box-shadow: 0 14rpx 42rpx rgba(66, 38, 28, 0.07);
+}
+
+.success-card {
+  text-align: center;
+}
+
+.success-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 112rpx;
+  height: 112rpx;
+  margin: 10rpx auto 24rpx;
+  border-radius: 50%;
+  color: #ffffff;
+  background: #22c55e;
+  font-size: 64rpx;
+  font-weight: 900;
+}
+
+.success-title,
+.success-desc,
+.section-title {
+  display: block;
+}
+
+.success-title {
+  color: #2f1f1c;
+  font-size: 42rpx;
+  font-weight: 900;
+}
+
+.success-desc {
+  margin-top: 14rpx;
+  color: #8a6d64;
+  font-size: 26rpx;
+  line-height: 1.55;
+}
+
+.section-title {
+  margin-bottom: 20rpx;
+  color: #2f1f1c;
+  font-size: 32rpx;
+  font-weight: 900;
+}
+
+.line {
+  display: flex;
+  justify-content: space-between;
+  gap: 24rpx;
+  margin-top: 18rpx;
+  color: #6f4b43;
+  font-size: 25rpx;
+}
+
+.line text:last-child {
+  flex: 1;
+  text-align: right;
+  color: #2f1f1c;
+  font-weight: 700;
+}
+
+.line.pay {
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid #f3e2dc;
+  color: #e54862;
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.detail-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  line-height: 1;
+  margin-bottom: 18rpx;
+}

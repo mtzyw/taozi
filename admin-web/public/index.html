@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>桃子预售网页管理后台</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='50'%3E%F0%9F%8D%91%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/styles.css?v=20260523-direct-sale-hide" />
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">PEACH PRESALE ADMIN</p>
+      <h1>桃子预售网页管理后台</h1>
+      <p class="sub">网页端维护商品、预售批次、自提点、运费规则和订单履约；数据落在本地 SQLite。</p>
+    </div>
+    <div class="db-card">
+      <span>SQLite</span>
+      <strong id="dbPath">加载中...</strong>
+      <p class="auth-hint" id="authHint"></p>
+      <button class="ghost small" id="logoutBtn" hidden>退出登录</button>
+    </div>
+  </header>
+
+  <section class="login-panel card" id="loginPanel" hidden>
+    <p class="eyebrow">ADMIN LOGIN</p>
+    <h2>管理员登录</h2>
+    <p class="sub">请输入本地后台账号密码后再维护商品、库存、订单和白名单。</p>
+    <form class="login-form" id="loginForm">
+      <label>管理员账号<input name="username" autocomplete="username" required /></label>
+      <label>管理员密码<input name="password" type="password" autocomplete="current-password" required /></label>
+      <button class="primary" type="submit">进入后台</button>
+    </form>
+  </section>
+
+  <main id="adminMain" hidden>
+    <section class="stats" id="stats"></section>
+
+    <nav class="tabs">
+      <button class="tab active" data-target="dashboardPanel">看板</button>
+      <button class="tab" data-target="ordersPanel">订单</button>
+      <button class="tab" data-target="orderStatsPanel">统计</button>
+      <button class="tab" data-target="productsPanel">商品</button>
+      <button class="tab" data-target="pickupPanel">自提点</button>
+      <button class="tab" data-target="shippingPanel">运费</button>
+      <button class="tab" data-target="whitelistPanel">白名单</button>
+      <button class="tab" data-target="couponsPanel">优惠码</button>
+    </nav>
+
+    <section class="panel active" id="dashboardPanel">
+      <div class="section-head">
+        <div>
+          <h2>运营看板</h2>
+          <p>快速查看销售、履约、库存和优惠效果，方便每天开工先扫一眼。</p>
+        </div>
+        <button class="ghost" id="releaseExpiredBtn">释放超时待支付库存</button>
+      </div>
+      <div class="dashboard-grid" id="dashboardGrid"></div>
+      <div class="dashboard-columns">
+        <div class="card">
+          <h3>热卖商品</h3>
+          <div id="topProductsList" class="mini-list"></div>
+        </div>
+        <div class="card">
+          <h3>自提点订单</h3>
+          <div id="pickupStatsList" class="mini-list"></div>
+        </div>
+        <div class="card">
+          <h3>订单状态分布</h3>
+          <div id="statusStatsList" class="mini-list"></div>
+        </div>
+      </div>
+      <div class="card logs-card">
+        <h3>最近操作日志</h3>
+        <div id="operationLogsList" class="mini-list"></div>
+      </div>
+    </section>
+
+    <section class="panel" id="productsPanel">
+      <div class="section-head">
+        <div>
+          <h2>商品与预售批次</h2>
+          <p>支持网页端新增、编辑、上下架；盒装/袋装库存独立维护。</p>
+        </div>
+        <button class="ghost" id="resetProductBtn">清空表单</button>
+      </div>
+      <form class="card form-grid" id="productForm" novalidate>
+        <input type="hidden" name="id" />
+        <label>商品名称<input name="name" required placeholder="早夏水蜜桃预售礼盒" /></label>
+        <label>卖点描述<input name="subtitle" placeholder="精选大果，甜香多汁" /></label>
+        <div class="upload-card wide">
+          <div>
+            <label>商品主图地址<input name="coverImage" placeholder="上传后自动生成 /uploads/xxx.png" readonly /></label>
+            <p class="meta" id="uploadHint">支持 PNG/JPG/WEBP，最大 5MB；图片保存在本地服务器。</p>
+          </div>
+          <img class="cover-preview" id="coverPreview" alt="" hidden />
+          <label class="upload-button">
+            <input id="coverImageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+            选择并上传图片
+          </label>
+        </div>
+        <label class="wide">商品图册地址<textarea name="imagesText" rows="3" placeholder="一行一个图片地址，上传详情图后会自动追加"></textarea></label>
+        <div class="upload-card wide">
+          <div>
+            <p class="meta" id="galleryUploadHint">可上传多张详情图，上传成功后自动追加到图册地址。</p>
+          </div>
+          <label class="upload-button">
+            <input id="galleryImageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+            上传并追加到图册
+          </label>
+        </div>
+        <label>盒装价格/元<input name="boxSalePriceYuan" type="number" min="0.01" step="0.01" placeholder="勾选盒装时必填且大于0" /></label>
+        <label>袋装价格/元<input name="bagSalePriceYuan" type="number" min="0.01" step="0.01" placeholder="勾选袋装时必填且大于0" /></label>
+        <label>规格重量<input name="weightText" placeholder="约 6 斤" /></label>
+        <label>盒装库存<input name="boxStock" type="number" min="1" placeholder="勾选盒装时必填且大于0" /></label>
+        <label>袋装库存<input name="bagStock" type="number" min="1" placeholder="勾选袋装时必填且大于0" /></label>
+        <label>销售类型
+          <select name="saleType">
+            <option value="presale" selected>预售</option>
+            <option value="direct">直售</option>
+          </select>
+        </label>
+        <label>标签<input name="tagsText" placeholder="新上架 预售" /></label>
+        <label>批次名称<input name="batchName" required /></label>
+        <label>客服联系人<input name="customerContact" placeholder="如 王经理" /></label>
+        <label>客服电话<input name="customerPhone" placeholder="用于订单详情展示" /></label>
+        <label>自提有效期/小时<input name="pickupValidHours" type="number" min="0" step="1" placeholder="自提到货后多少小时内领取" /></label>
+        <label class="presale-only">履约开始<input name="shipStart" required placeholder="2026-06-22" /></label>
+        <label class="presale-only">履约结束<input name="shipEnd" required placeholder="2026-07-03" /></label>
+        <label class="presale-only">截单时间<input name="orderDeadline" required placeholder="2026-06-18 22:00" /></label>
+        <div class="check-row">
+          <label><input type="checkbox" name="packageBox" checked /> 盒装</label>
+          <label><input type="checkbox" name="packageBag" /> 袋装</label>
+          <label><input type="checkbox" name="deliveryPickup" checked /> 自提</label>
+          <label><input type="checkbox" name="deliveryExpress" /> 快递</label>
+        </div>
+        <div class="choice-section wide">
+          <div class="choice-head">
+            <strong>适用自提点</strong>
+            <div>
+              <button class="ghost small" type="button" id="selectAllProductPickupBtn">全选自提点</button>
+              <button class="ghost small" type="button" id="clearProductPickupBtn">清空/全部适用</button>
+            </div>
+          </div>
+          <div class="choice-grid" id="productPickupPointChoices"></div>
+          <p class="meta">勾选后仅这些自提点可选；不勾选表示全部启用自提点都适用。</p>
+        </div>
+        <label class="wide">预售说明<textarea name="presaleNote" rows="3" placeholder="预计成熟后按批次发货/自提"></textarea></label>
+        <label class="wide">商品详情/预售规则<textarea name="detailText" rows="5" placeholder="包装说明、果径等级、退款规则、温馨提示等"></textarea></label>
+        <button class="primary wide" type="submit">保存商品</button>
+      </form>
+      <div class="list" id="productsList"></div>
+    </section>
+
+    <section class="panel" id="pickupPanel">
+      <div class="section-head">
+        <div>
+          <h2>自提点管理</h2>
+          <p>维护自提点、支持包装、容量和启停状态。</p>
+        </div>
+        <button class="ghost" id="resetPickupBtn">清空表单</button>
+      </div>
+      <form class="card form-grid" id="pickupForm">
+        <input type="hidden" name="id" />
+        <label>名称<input name="name" required /></label>
+        <label>地址<input name="address" required /></label>
+        <label>电话<input name="phone" /></label>
+        <label>自提时间<input name="openTime" placeholder="10:00-20:00" /></label>
+        <label>每日容量<input name="dailyCapacity" type="number" min="0" value="0" /></label>
+        <label>排序权重<input name="sortWeight" type="number" value="0" /></label>
+        <label>自提点登录账号<input name="loginAccount" placeholder="给自提点工作人员使用" /></label>
+        <label>自提点登录密码<input name="loginPassword" type="password" autocomplete="new-password" placeholder="编辑时留空表示不修改" /></label>
+        <div class="check-row">
+          <label><input type="checkbox" name="packageBox" checked /> 盒装</label>
+          <label><input type="checkbox" name="packageBag" checked /> 袋装</label>
+          <label><input type="checkbox" name="enabled" checked /> 启用</label>
+        </div>
+        <label class="wide">说明<textarea name="notice" rows="2"></textarea></label>
+        <button class="primary wide" type="submit">保存自提点</button>
+      </form>
+      <div class="list" id="pickupList"></div>
+    </section>
+
+    <section class="panel" id="shippingPanel">
+      <div class="section-head">
+        <div>
+          <h2>运费与包邮</h2>
+          <p>网页后台维护统一运费规则，后续小程序接 API 后即可共用。</p>
+        </div>
+      </div>
+      <form class="card form-grid" id="shippingForm">
+        <label>本地快递费/元<input name="localExpressFeeYuan" type="number" step="0.01" placeholder="成都/重庆" /></label>
+        <label>省外快递费/元<input name="remoteExpressFeeYuan" type="number" step="0.01" placeholder="非成都/重庆" /></label>
+        <label>满额包邮/元<input name="freeShippingThresholdYuan" type="number" step="0.01" /></label>
+        <label>自提服务费/元<input name="pickupFeeYuan" type="number" step="0.01" /></label>
+        <label class="wide">本地识别关键词<input name="localRegionsText" placeholder="成都 成都市 重庆 重庆市" /></label>
+        <label class="wide">说明<textarea name="note" rows="2"></textarea></label>
+        <button class="primary wide" type="submit">保存运费规则</button>
+      </form>
+    </section>
+
+    <section class="panel" id="whitelistPanel">
+      <div class="section-head">
+        <div>
+          <h2>白名单折扣</h2>
+          <p>批量导入手机号后，小程序买家端会从后台读取折扣并自动参与价格计算。</p>
+        </div>
+      </div>
+      <form class="card form-grid" id="whitelistForm">
+        <label class="wide">手机号列表<textarea name="phonesText" rows="5" placeholder="一行一个手机号，或用空格/逗号分隔"></textarea></label>
+        <div class="upload-card wide">
+          <div>
+            <p class="meta" id="whitelistImportHint">支持导入 Excel(.xlsx)、CSV 或 TXT；系统会自动识别文件里的 11 位手机号并去重。</p>
+          </div>
+          <button class="ghost small" type="button" id="downloadWhitelistTemplateBtn">下载模板</button>
+          <label class="upload-button">
+            <input id="whitelistImportFile" type="file" accept=".xlsx,.csv,.txt,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden />
+            选择文件导入手机号
+          </label>
+        </div>
+        <label>折扣<input name="discountPercent" type="number" min="1" max="100" value="80" /></label>
+        <label>标签<input name="label" value="白名单折扣" /></label>
+        <div class="choice-section wide">
+          <div class="choice-head">
+            <strong>适用商品</strong>
+            <div>
+              <button class="ghost small" type="button" id="selectAllWhitelistProductsBtn">全选商品</button>
+              <button class="ghost small" type="button" id="clearWhitelistProductsBtn">清空选择</button>
+            </div>
+          </div>
+          <div class="choice-grid" id="whitelistProductChoices"></div>
+          <p class="meta">必须至少勾选一个商品；这批手机号只在所选商品享受白名单折扣。</p>
+        </div>
+        <button class="primary wide" type="submit">导入白名单</button>
+      </form>
+      <div class="list" id="whitelistList"></div>
+    </section>
+
+    <section class="panel" id="couponsPanel">
+      <div class="section-head">
+        <div>
+          <h2>优惠码管理</h2>
+          <p>创建、启停、追踪优惠码；支持“满 X 元减 Y 元”，门槛填 0 表示无门槛。</p>
+        </div>
+      </div>
+      <form class="card form-grid" id="couponForm">
+        <input type="hidden" name="originalCode" />
+        <label>优惠码<input name="code" required placeholder="PEACH10" /></label>
+        <label>类型
+          <select name="type">
+            <option value="amount">满减金额</option>
+            <option value="percent">折扣百分比</option>
+          </select>
+        </label>
+        <label>优惠值<input name="valueText" type="number" step="0.01" required placeholder="10 或 88" /></label>
+        <label>满额门槛/元<input name="minOrderAmountYuan" type="number" step="0.01" min="0" value="0" placeholder="100" /></label>
+        <label>来源/渠道<input name="source" placeholder="团长渠道/开业优惠" /></label>
+        <div class="choice-section wide">
+          <div class="choice-head">
+            <strong>适用商品</strong>
+            <div>
+              <button class="ghost small" type="button" id="selectAllCouponProductsBtn">全选商品</button>
+              <button class="ghost small" type="button" id="clearCouponProductsBtn">清空选择</button>
+            </div>
+          </div>
+          <div class="choice-grid" id="couponProductChoices"></div>
+          <p class="meta">必须至少勾选一个商品；该优惠码只在所选商品可用。</p>
+        </div>
+        <label>总次数限制<input name="usageLimit" type="number" min="0" value="0" /></label>
+        <label>每手机号限制<input name="perPhoneLimit" type="number" min="0" value="1" /></label>
+        <label>开始时间<input name="startsAt" placeholder="2026-06-01T00:00:00.000Z" /></label>
+        <label>结束时间<input name="endsAt" placeholder="2026-12-31T23:59:59.000Z" /></label>
+        <div class="check-row">
+          <label><input type="checkbox" name="enabled" checked /> 启用</label>
+        </div>
+        <button class="primary wide" type="submit">保存优惠码</button>
+      </form>
+      <div class="list" id="couponsList"></div>
+    </section>
+
+    <section class="panel" id="orderStatsPanel">
+      <div class="section-head">
+        <div>
+          <h2>订单统计</h2>
+          <p>按当前订单数据统计完成、发货、领取、退款和净收入；每一类都可导出明细。</p>
+        </div>
+      </div>
+      <div class="stats-grid card" id="orderStatsGrid"></div>
+    </section>
+
+    <section class="panel" id="ordersPanel">
+      <div class="section-head">
+        <div>
+          <h2>订单履约与售后</h2>
+          <p>表格化管理批次、联系人、配送、发货、售后和退款；导入清单后按订单编号自动比对。</p>
+        </div>
+        <div class="header-actions">
+          <div class="import-action-row">
+            <button class="ghost" id="importExpressBtn">导入快递发货信息</button>
+            <button class="ghost" id="importPickupBtn">导入自提发货信息</button>
+          </div>
+          <div class="import-template-row">
+            <button class="ghost small" id="downloadExpressTemplateBtn" type="button">下载快递模板（.xlsx）</button>
+            <button class="ghost small" id="downloadPickupTemplateBtn" type="button">下载自提模板（.xlsx）</button>
+          </div>
+          <input id="expressImportFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden />
+          <input id="pickupImportFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden />
+        </div>
+      </div>
+      <div class="card filters">
+        <input id="orderBatchFilter" placeholder="批次名称" />
+        <select id="orderStatusFilter">
+          <option value="all">全部状态</option>
+          <option value="awaiting_payment">待支付</option>
+          <option value="express_awaiting_shipment">快递待发</option>
+          <option value="pickup_awaiting_shipment">自提待发</option>
+          <option value="pickup_shipped">自提点已到货</option>
+          <option value="shipped">快递已发</option>
+          <option value="express_received">快递已签收</option>
+          <option value="pickup_received">自提已领取</option>
+          <option value="after_sale">售后中</option>
+          <option value="refunded">已退款</option>
+          <option value="cancelled">已取消</option>
+        </select>
+        <select id="orderDeliveryFilter">
+          <option value="all">全部配送</option>
+          <option value="pickup">自提</option>
+          <option value="express">快递</option>
+        </select>
+        <select id="orderSaleTypeFilter">
+          <option value="all">全部销售类型</option>
+          <option value="presale">预售</option>
+          <option value="direct">直售</option>
+        </select>
+        <input id="orderDestinationFilter" placeholder="自提点/快递地址" />
+        <input id="orderFulfillmentStartFilter" placeholder="履约开始 ≥ 2026-06-01" />
+        <input id="orderFulfillmentEndFilter" placeholder="履约截止 ≤ 2026-06-30" />
+        <select id="orderPageSize">
+          <option value="20">20 条/页</option>
+          <option value="50">50 条/页</option>
+          <option value="100">100 条/页</option>
+        </select>
+        <input id="orderKeyword" placeholder="搜手机号/订单号/核销码" />
+        <button class="ghost" id="reloadOrdersBtn">刷新</button>
+      </div>
+      <div class="import-result" id="importResult" hidden></div>
+      <div class="table-toolbar" id="ordersToolbar"></div>
+      <div class="list" id="ordersList"></div>
+      <div class="table-footer card">
+        <div class="pagination" id="ordersPagination"></div>
+        <div class="footer-actions">
+          <label class="inline-label">打印条数<input id="printOrderLimit" type="number" min="1" value="20" /></label>
+          <button class="ghost" id="printPickupDocsBtn">打印自提单据</button>
+          <button class="ghost" id="printDeliveryDocsBtn">导出供货单</button>
+          <button class="ghost" id="bindPrinterBtn">绑定云打印机</button>
+          <button class="ghost" id="exportOrdersBtn">导出筛选结果</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="appModal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="appModalTitle">
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow" id="appModalEyebrow">操作确认</p>
+          <h3 id="appModalTitle">提示</h3>
+        </div>
+        <button class="modal-close" id="appModalClose" type="button" aria-label="关闭弹窗">×</button>
+      </div>
+      <div class="modal-body" id="appModalBody"></div>
+      <div class="modal-error" id="appModalError" hidden></div>
+      <div class="modal-actions">
+        <button class="ghost" id="appModalCancel" type="button">取消</button>
+        <button class="primary" id="appModalConfirm" type="button">确定</button>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script src="/app.js?v=20260523-direct-sale-hide"></script>
+</body>
+</html>

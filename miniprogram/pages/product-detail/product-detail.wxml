@@ -1,0 +1,72 @@
+<view wx:if="{{product}}" class="container detail-page">
+  <swiper wx:if="{{product.images.length > 1}}" class="detail-swiper" indicator-dots circular autoplay interval="4200">
+    <swiper-item wx:for="{{product.images}}" wx:key="*this">
+      <image class="detail-image" src="{{item}}" mode="aspectFill" />
+    </swiper-item>
+  </swiper>
+  <image wx:else class="detail-image" src="{{product.coverImage}}" mode="aspectFill" />
+
+  <view class="detail-card">
+    <view class="title-row">
+      <text class="title">{{product.name}}</text>
+      <text class="status {{product.isOnSale ? 'status-on' : 'status-off'}}">{{product.statusText}}</text>
+    </view>
+    <text class="subtitle">{{product.subtitle}}</text>
+
+    <view wx:if="{{isWhitelistUser}}" class="vip-banner">{{whitelistLabel}}，当前价已自动刷新</view>
+
+    <view class="price-row">
+      <text class="price-current">¥{{product.payPriceText}}</text>
+    </view>
+
+    <view class="info-grid">
+      <view class="info-item">
+        <text class="info-label">总库存</text>
+        <text class="info-value">{{product.stock}}</text>
+      </view>
+      <view class="info-item">
+        <text class="info-label">当前规格库存</text>
+        <text class="info-value">{{selectedSkuStock}}</text>
+      </view>
+      <view class="info-item">
+        <text class="info-label">配送</text>
+        <text class="info-value">{{product.deliveryText}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="detail-card">
+    <text class="section-title">选择规格</text>
+    <view class="option-row">
+      <button wx:for="{{packageOptions}}" wx:key="id" class="package-btn {{selectedSkuId == item.id ? 'active' : ''}}" data-type="{{item.type}}" data-skuid="{{item.id}}" bindtap="selectPackage">
+        <text class="sku-name">{{item.name}}</text>
+        <text class="sku-meta">{{item.weightText}}｜{{item.deliveryText}}｜库存 {{item.stock}}</text>
+        <text class="sku-price">¥{{item.payPriceText}}</text>
+      </button>
+    </view>
+    <text wx:if="{{selectedSku.description}}" class="note">{{selectedSku.description}}</text>
+  </view>
+
+  <view class="detail-card">
+    <text class="section-title">预售说明</text>
+    <text wx:if="{{product.batchName}}" class="note">批次：{{product.batchName}}</text>
+    <text wx:if="{{product.presaleWindow}}" class="note">{{product.presaleWindow}}</text>
+    <text class="note">{{product.presaleNote}}</text>
+    <text wx:if="{{product.shippingRuleText}}" class="note">运费：{{product.shippingRuleText}}</text>
+  </view>
+
+  <view wx:if="{{product.detailText}}" class="detail-card">
+    <text class="section-title">商品详情</text>
+    <text class="note preserve">{{product.detailText}}</text>
+  </view>
+
+  <view class="bottom-actions">
+    <button wx:if="{{product.isOnSale}}" class="share-detail-btn" open-type="share" hover-class="share-detail-btn-hover" hover-start-time="0" hover-stay-time="90" bindtouchstart="onShareTouch">
+      <text class="share-icon">↗</text>
+      <text>分享</text>
+    </button>
+    <button wx:if="{{product.isOnSale && currentPhone}}" class="primary-btn checkout-btn" bindtap="goCheckout">去下单</button>
+    <button wx:elif="{{product.isOnSale}}" class="primary-btn checkout-btn" open-type="getPhoneNumber" loading="{{isBindingPhone}}" disabled="{{isBindingPhone}}" bindgetphonenumber="onCheckoutPhoneNumber">授权并下单</button>
+    <button wx:else class="primary-btn checkout-btn" disabled>暂不可买</button>
+  </view>
+</view>

@@ -1,0 +1,35 @@
+<view class="container products-page">
+  <view class="page-hero">
+    <text class="page-title">全部商品</text>
+    <text class="page-desc">桃子预售商品、库存和上下架状态集中展示。</text>
+    <text wx:if="{{isWhitelistUser}}" class="vip-line">{{whitelistLabel}} 已生效</text>
+  </view>
+
+  <scroll-view class="filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+    <view class="filter-row">
+      <button wx:for="{{filters}}" wx:key="key" class="filter-btn {{activeFilter == item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="switchFilter">{{item.label}}</button>
+    </view>
+  </scroll-view>
+
+  <view class="product-list">
+    <view wx:for="{{products}}" wx:key="id" class="product-card" data-id="{{item.id}}" bindtap="goProduct">
+      <image class="product-image" src="{{item.coverImage}}" mode="aspectFill" />
+      <view class="product-info">
+        <view class="title-row">
+          <text class="product-name">{{item.name}}</text>
+          <text class="status {{item.isOnSale ? 'status-on' : 'status-off'}}">{{item.statusText}}</text>
+        </view>
+        <text class="product-subtitle">{{item.subtitle}}</text>
+        <view class="meta-row"><text>{{item.packageText}}</text><text>{{item.stockText}}</text></view>
+        <view class="card-footer">
+          <view class="price-row"><text class="price">¥{{item.payPriceText}}</text></view>
+          <button wx:if="{{item.isOnSale}}" class="share-btn" open-type="share" data-id="{{item.id}}" catchtap="stopTap">
+            <text class="share-icon">↗</text>
+            <text>分享</text>
+          </button>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{!products.length}}" class="empty">暂无符合条件的商品</view>
+  </view>
+</view>

@@ -1,0 +1,64 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/products/products",
+    "pages/orders/orders",
+    "pages/profile/profile",
+    "pages/product-detail/product-detail",
+    "pages/checkout/checkout",
+    "pages/order-detail/order-detail",
+    "pages/address/address",
+    "pages/pickup-staff/pickup-staff",
+    "pages/payment-success/payment-success"
+  ],
+  "window": {
+    "navigationBarTitleText": "桃子预售",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#fff7f4",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#9b7870",
+    "selectedColor": "#e54862",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "assets/tabbar/home.png",
+        "selectedIconPath": "assets/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/products/products",
+        "text": "商品",
+        "iconPath": "assets/tabbar/products.png",
+        "selectedIconPath": "assets/tabbar/products-active.png"
+      },
+      {
+        "pagePath": "pages/orders/orders",
+        "text": "订单",
+        "iconPath": "assets/tabbar/orders.png",
+        "selectedIconPath": "assets/tabbar/orders-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "assets/tabbar/profile.png",
+        "selectedIconPath": "assets/tabbar/profile-active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents",
+  "sitemapLocation": "sitemap.json",
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于为你按距离推荐附近自提点"
+    }
+  },
+  "requiredPrivateInfos": [
+    "getLocation"
+  ]
+}

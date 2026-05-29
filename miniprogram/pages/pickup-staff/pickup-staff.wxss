@@ -1,0 +1,157 @@
+.pickup-staff-page {
+  padding-bottom: 48rpx;
+}
+
+.staff-hero,
+.card {
+  margin-bottom: 24rpx;
+  padding: 32rpx;
+  border-radius: 32rpx;
+  background: #ffffff;
+  box-shadow: 0 14rpx 42rpx rgba(66, 38, 28, 0.07);
+}
+
+.staff-hero {
+  background: linear-gradient(145deg, #ffe5de 0%, #fff8f1 100%);
+}
+
+.hero-title,
+.hero-desc,
+.section-title,
+.section-desc,
+.result-title,
+.result-message {
+  display: block;
+}
+
+.hero-title {
+  color: #2f1f1c;
+  font-size: 42rpx;
+  font-weight: 900;
+}
+
+.hero-desc,
+.section-desc,
+.result-message {
+  margin-top: 12rpx;
+  color: #8a6d64;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.section-title {
+  margin-bottom: 20rpx;
+  color: #2f1f1c;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.field {
+  display: block;
+  margin-bottom: 20rpx;
+  color: #6f4b43;
+  font-size: 26rpx;
+  font-weight: 900;
+}
+
+.field input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 88rpx;
+  margin-top: 10rpx;
+  padding: 0 24rpx;
+  border-radius: 22rpx;
+  background: #fff8f5;
+  color: #2f1f1c;
+  font-size: 28rpx;
+}
+
+.primary-btn,
+.plain-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 82rpx;
+  margin: 8rpx 0 0;
+  padding: 0 30rpx;
+  border: 0;
+  border-radius: 999rpx;
+  font-size: 28rpx;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.primary-btn {
+  width: 100%;
+  color: #ffffff;
+  background: linear-gradient(135deg, #ff6d8a 0%, #ff9a68 100%);
+}
+
+.plain-btn {
+  width: auto;
+  margin: 0;
+  color: #e54862;
+  background: #fff0ec;
+}
+
+.point-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.result-card {
+  border: 2rpx solid #f3ded6;
+}
+
+.result-card.success {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.result-card.warn {
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+
+.result-card.danger {
+  border-color: #fecdd3;
+  background: #fff1f2;
+}
+
+.result-title {
+  color: #2f1f1c;
+  font-size: 32rpx;
+  font-weight: 900;
+}
+
+.order-box {
+  margin-top: 22rpx;
+  padding: 20rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.line {
+  display: flex;
+  justify-content: space-between;
+  gap: 18rpx;
+  padding: 12rpx 0;
+  border-bottom: 1rpx solid #f3e2dc;
+  color: #6f4b43;
+  font-size: 24rpx;
+}
+
+.line:last-child {
+  border-bottom: none;
+}
+
+.line text:last-child {
+  max-width: 430rpx;
+  color: #2f1f1c;
+  font-weight: 900;
+  text-align: right;
+  word-break: break-all;
+}

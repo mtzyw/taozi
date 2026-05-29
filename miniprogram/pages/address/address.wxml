@@ -1,0 +1,48 @@
+<view class="container address-page">
+  <view class="page-hero">
+    <text class="page-title">收货地址</text>
+    <text class="page-desc">管理常用快递地址，下单选择快递时可一键套用。</text>
+  </view>
+
+  <view class="card">
+    <text class="section-title">{{addressId ? '编辑地址' : '新增地址'}}</text>
+    <view class="field-row">
+      <text class="field-label">收货人</text>
+      <input class="field-input" value="{{receiver}}" placeholder="请输入姓名" bindinput="onReceiverInput" />
+    </view>
+    <view class="field-row">
+      <text class="field-label">手机号</text>
+      <input class="field-input" type="number" maxlength="11" value="{{phone}}" placeholder="请输入收货手机号" bindinput="onPhoneInput" />
+    </view>
+    <view class="address-block">
+      <text class="field-label address-label">详细地址</text>
+      <textarea class="address-input" maxlength="160" value="{{address}}" placeholder="省市区、街道门牌号等" bindinput="onAddressInput"></textarea>
+    </view>
+    <view class="switch-row">
+      <text>设为默认地址</text>
+      <switch checked="{{isDefault}}" color="#ff7a90" bindchange="onDefaultSwitch" />
+    </view>
+    <button class="primary-btn save-btn" loading="{{isSaving}}" disabled="{{isSaving}}" bindtap="saveAddress">保存地址</button>
+    <button wx:if="{{addressId}}" class="ghost-btn reset-btn" disabled="{{isSaving}}" bindtap="resetForm">取消编辑</button>
+  </view>
+
+  <view class="card">
+    <text class="section-title">地址簿</text>
+    <view wx:if="{{addresses.length}}" class="address-list">
+      <view wx:for="{{addresses}}" wx:key="id" class="address-item">
+        <view class="address-top">
+          <text class="receiver">{{item.receiver}}</text>
+          <text class="phone">{{item.maskedPhone}}</text>
+          <text wx:if="{{item.isDefault}}" class="default-badge">默认</text>
+        </view>
+        <text class="address-text">{{item.address}}</text>
+        <view class="action-row">
+          <button size="mini" class="ghost-btn" data-id="{{item.id}}" bindtap="editAddress">编辑</button>
+          <button size="mini" class="ghost-btn" loading="{{operatingAddressId == item.id}}" disabled="{{operatingAddressId == item.id}}" data-id="{{item.id}}" bindtap="setDefault">设默认</button>
+          <button size="mini" class="ghost-btn danger" loading="{{operatingAddressId == item.id}}" disabled="{{operatingAddressId == item.id}}" data-id="{{item.id}}" bindtap="deleteAddress">删除</button>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="empty">还没有地址，先新增一个常用地址吧。</view>
+  </view>
+</view>

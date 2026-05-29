@@ -1,0 +1,16 @@
+{
+  "name": "wechat-miniprogram-starter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "微信小程序原生基础模板",
+  "scripts": {
+    "validate": "node scripts/validate-miniprogram.js",
+    "image:generate": "node scripts/generate-kie-image.js",
+    "test:logic": "node scripts/test-business-logic.js",
+    "admin:init": "node --no-warnings=ExperimentalWarning -e \"require('./admin-web/db').initDb(); console.log('SQLite admin database initialized')\"",
+    "admin:start": "node --no-warnings=ExperimentalWarning admin-web/server.js",
+    "test:admin": "node --no-warnings=ExperimentalWarning scripts/test-admin-web.js",
+    "start": "node --no-warnings=ExperimentalWarning admin-web/server.js"
+  },
+  "devDependencies": {}
+}

@@ -1,0 +1,35 @@
+<view class="container orders-page">
+  <view class="page-hero">
+    <text class="page-title">我的订单</text>
+    <text class="page-desc">查看预售订单、自提核销码和快递履约信息。</text>
+  </view>
+
+  <scroll-view class="order-tabs" scroll-x>
+    <view class="tab-row">
+      <view wx:for="{{orderTabs}}" wx:key="key" class="order-tab {{activeTab == item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="onTabTap">{{item.label}}</view>
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{orders.length}}" class="order-list">
+    <view wx:for="{{orders}}" wx:key="id" class="order-card" data-id="{{item.id}}" bindtap="goDetail">
+      <view class="order-top">
+        <text class="order-status">{{item.statusText}}</text>
+        <text class="order-id">{{item.id}}</text>
+      </view>
+      <text class="order-title">{{item.itemName}}</text>
+      <text class="order-meta">{{item.itemSpec}}｜{{item.maskedPhone}}</text>
+      <text class="order-meta">{{item.deliverySummary}}</text>
+      <view class="amount-row">
+        <text>实付</text>
+        <text>¥{{item.payAmountText}}</text>
+      </view>
+      <text class="detail-link">查看详情 ›</text>
+    </view>
+  </view>
+
+  <view wx:else class="empty-card">
+    <text class="empty-title">暂无匹配订单</text>
+    <text class="empty-desc">可以切换上方标签查看其他订单。</text>
+    <button class="primary-btn" bindtap="goProducts">去逛商品</button>
+  </view>
+</view>

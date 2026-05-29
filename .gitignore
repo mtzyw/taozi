@@ -1,0 +1,21 @@
+node_modules/
+miniprogram/miniprogram_npm/
+dist/
+.DS_Store
+project.private.config.json
+admin-web-*.png
+taozi-deploy-*.zip
+.env
+.env.*
+admin-web/data/*.sqlite
+admin-web/data/*.db
+admin-web/data/*.db-*
+admin-web/data/*.sqlite-*
+admin-web/uploads/*
+!admin-web/uploads/.gitkeep
+
+# 本地启动配置，包含密钥，不要提交
+admin-web/local-runtime.conf
+# 微信支付证书/私钥目录，本地放置，不要提交
+admin-web/certs/wechat-pay/*
+!admin-web/certs/wechat-pay/.gitkeep

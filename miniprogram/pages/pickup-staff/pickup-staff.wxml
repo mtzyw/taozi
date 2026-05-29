@@ -1,0 +1,54 @@
+<view class="container pickup-staff-page">
+  <view class="staff-hero">
+    <text class="hero-title">自提点核销</text>
+    <text class="hero-desc">工作人员登录后，输入下单手机号后4位和核销码，确认订单是否在当前自提点并完成取货核销。</text>
+  </view>
+
+  <view wx:if="{{!sessionId}}" class="card form-card">
+    <text class="section-title">自提点登录</text>
+    <label class="field">
+      <text>账号</text>
+      <input value="{{account}}" data-field="account" placeholder="请输入后台设置的账号" bindinput="onInput" />
+    </label>
+    <label class="field">
+      <text>密码</text>
+      <input value="{{password}}" data-field="password" password placeholder="请输入密码" bindinput="onInput" />
+    </label>
+    <button class="primary-btn" loading="{{isLoggingIn}}" disabled="{{isLoggingIn}}" bindtap="login">登录自提点</button>
+  </view>
+
+  <view wx:else>
+    <view class="card point-card">
+      <view>
+        <text class="section-title">{{pickupPoint.name}}</text>
+        <text class="section-desc">{{pickupPoint.address}}</text>
+      </view>
+      <button class="plain-btn" bindtap="logout">退出</button>
+    </view>
+
+    <view class="card form-card">
+      <text class="section-title">核销查询</text>
+      <label class="field">
+        <text>手机号后4位</text>
+        <input value="{{phoneTail}}" data-field="phoneTail" type="number" maxlength="4" placeholder="例如 2828" bindinput="onInput" />
+      </label>
+      <label class="field">
+        <text>核销码</text>
+        <input value="{{pickupCode}}" data-field="pickupCode" type="number" placeholder="请输入用户订单核销码" bindinput="onInput" />
+      </label>
+      <button class="primary-btn" loading="{{isQuerying}}" disabled="{{isQuerying}}" bindtap="lookupOrder">查询订单</button>
+    </view>
+
+    <view wx:if="{{result}}" class="card result-card {{resultLevel}}">
+      <text class="result-title">{{resultTitle}}</text>
+      <text class="result-message">{{result.message}}</text>
+      <view wx:if="{{result.order}}" class="order-box">
+        <view class="line"><text>订单</text><text>{{result.order.id}}</text></view>
+        <view class="line"><text>商品</text><text>{{result.order.itemName}} {{result.order.skuName}} × {{result.order.quantity}}</text></view>
+        <view class="line"><text>自提点</text><text>{{result.order.pickupPointName}}</text></view>
+        <view class="line"><text>状态</text><text>{{result.order.statusText}}</text></view>
+      </view>
+      <button wx:if="{{canConfirm}}" class="primary-btn" loading="{{isConfirming}}" disabled="{{isConfirming}}" bindtap="confirmPickup">确认已领取</button>
+    </view>
+  </view>
+</view>

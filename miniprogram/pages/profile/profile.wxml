@@ -1,0 +1,47 @@
+<view class="container profile-page">
+  <view class="profile-hero">
+    <text class="hello">我的桃子商城</text>
+    <text wx:if="{{currentPhone}}" class="phone">{{maskedPhone}}</text>
+    <text wx:else class="phone">绑定微信手机号后，可在这里查看订单和权益</text>
+    <text wx:if="{{isWhitelistUser}}" class="vip">{{whitelistLabel}} 已生效</text>
+    <button wx:if="{{currentPhone}}" class="wechat-phone-btn logout-btn" bindtap="logout">退出登录</button>
+    <button wx:else class="wechat-phone-btn" open-type="getPhoneNumber" loading="{{isBindingPhone}}" disabled="{{isBindingPhone}}" bindgetphonenumber="onGetPhoneNumber">一键绑定微信手机号</button>
+  </view>
+
+  <view class="card">
+    <text class="section-title">会员权益</text>
+    <text wx:if="{{isWhitelistUser}}" class="section-desc">{{whitelistLabel}} 已自动生效，结算页会按专属价计算。</text>
+    <text wx:elif="{{currentPhone}}" class="section-desc">当前手机号暂无专属折扣；如有优惠码，可在结算页填写使用。</text>
+    <text wx:else class="section-desc">下单手机号命中白名单时，系统会自动展示专属折扣价。</text>
+  </view>
+
+  <view class="stats-row">
+    <view class="stat-card" bindtap="goOrders">
+      <text class="stat-value">{{orderCount}}</text>
+      <text class="stat-label">我的订单</text>
+    </view>
+    <view class="stat-card">
+      <text class="stat-value">¥{{totalPaidText}}</text>
+      <text class="stat-label">累计实付</text>
+    </view>
+  </view>
+
+  <view class="card menu-card">
+    <view class="menu-item" bindtap="goOrders">
+      <text>订单中心</text>
+      <text>›</text>
+    </view>
+    <view class="menu-item" bindtap="goAddress">
+      <text>收货地址</text>
+      <text class="menu-desc">管理常用地址 ›</text>
+    </view>
+    <view class="menu-item">
+      <text>客服与售后</text>
+      <text class="menu-desc">后续接入</text>
+    </view>
+    <view class="menu-item" bindtap="goPickupStaff">
+      <text>自提点登录</text>
+      <text class="menu-desc">核销取货 ›</text>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,50 @@
+<view class="container home-page">
+  <view class="hero">
+    <view class="hero-top">
+      <view>
+        <text class="eyebrow">PEACH PRESALE</text>
+        <text class="hero-title">鲜桃预售到家</text>
+        <text class="hero-subtitle">产地直发与到店自提可选，白名单客户下单时自动识别专属折扣。</text>
+      </view>
+      <button class="admin-link" size="mini" bindtap="goProfile">个人中心</button>
+    </view>
+  </view>
+
+  <view class="section-head">
+    <text class="section-title">预售商品</text>
+    <text class="section-desc">盒装/袋装独立库存，全部规格售罄后自动下架</text>
+  </view>
+
+  <view class="product-list">
+    <view wx:for="{{products}}" wx:key="id" class="product-card" bindtap="goProduct" data-id="{{item.id}}">
+      <image class="product-image" src="{{item.coverImage}}" mode="aspectFill" />
+      <view class="product-body">
+        <view class="product-title-row">
+          <text class="product-name">{{item.name}}</text>
+          <text class="status {{item.isOnSale ? 'status-on' : 'status-off'}}">{{item.statusText}}</text>
+        </view>
+        <text class="product-subtitle">{{item.subtitle}}</text>
+        <view class="tag-row">
+          <text wx:for="{{item.tags}}" wx:key="*this" class="tag">{{item}}</text>
+        </view>
+        <view class="meta-row">
+          <text>{{item.packageText}}</text>
+          <text>{{item.stockText}}</text>
+        </view>
+        <view class="price-row">
+          <text class="price-current">¥{{item.payPriceText}}</text>
+        </view>
+        <view class="card-actions">
+          <button wx:if="{{item.isOnSale && currentPhone}}" class="primary-btn buy-btn" data-id="{{item.id}}" catchtap="goProduct">立即预订</button>
+          <button wx:elif="{{item.isOnSale}}" class="primary-btn buy-btn" data-id="{{item.id}}" open-type="getPhoneNumber" loading="{{isBindingPhone}}" disabled="{{isBindingPhone}}" catchtap="stopTap" bindgetphonenumber="onBuyPhoneNumber">立即预定</button>
+          <button wx:else class="primary-btn buy-btn" disabled>暂不可买</button>
+          <button wx:if="{{item.isOnSale}}" class="share-btn" open-type="share" data-id="{{item.id}}" catchtap="stopTap">
+            <text class="share-icon">↗</text>
+            <text>分享</text>
+          </button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+</view>

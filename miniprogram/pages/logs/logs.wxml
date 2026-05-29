@@ -1,0 +1,5 @@
+<view class="container">
+  <view class="log-card" wx:for="{{logs}}" wx:key="*this">
+    <text>{{item}}</text>
+  </view>
+</view>

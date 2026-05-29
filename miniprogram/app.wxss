@@ -1,0 +1,61 @@
+page {
+  min-height: 100vh;
+  background: #fff7f4;
+  color: #2f1f1c;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.container {
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 32rpx 28rpx calc(120rpx + env(safe-area-inset-bottom));
+}
+
+button::after {
+  border: none;
+}
+
+.primary-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  line-height: 1;
+  color: #ffffff;
+  background: linear-gradient(135deg, #ff7a90 0%, #ff9f6e 100%);
+  border-radius: 999rpx;
+  font-weight: 700;
+}
+
+.secondary-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  line-height: 1;
+  color: #d95d6a;
+  background: #fff0f2;
+  border-radius: 999rpx;
+  font-weight: 700;
+}
+
+.ghost-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  line-height: 1;
+  color: #6f4b43;
+  background: #fff9f5;
+  border: 1rpx solid #f2d6cd;
+  border-radius: 999rpx;
+}
+
+button[disabled],
+button.disabled {
+  opacity: 0.48;
+}
+
+image {
+  background: #f8ebe5;
+}

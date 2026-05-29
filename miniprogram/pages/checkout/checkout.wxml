@@ -1,0 +1,111 @@
+<view wx:if="{{product}}" class="container checkout-page">
+  <view class="card product-summary">
+    <image class="summary-image" src="{{product.coverImage}}" mode="aspectFill" />
+    <view class="summary-copy">
+      <text class="summary-title">{{product.name}}</text>
+      <text class="summary-subtitle">{{skuName}}｜{{skuWeightText}}｜当前规格库存 {{skuStock}}</text>
+      <text class="summary-price">规格价格 ¥{{skuSalePriceText}}</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <text class="section-title">购买信息</text>
+    <view class="field-row">
+      <text class="field-label">联系手机号</text>
+      <input class="field-input" type="number" maxlength="11" value="{{phone}}" placeholder="用于接收订单通知和识别优惠" bindinput="onPhoneInput" />
+    </view>
+    <view class="field-row">
+      <text class="field-label">数量</text>
+      <input class="field-input" type="number" value="{{quantity}}" placeholder="请输入购买数量" bindinput="onQuantityInput" bindblur="onQuantityBlur" />
+    </view>
+    <view class="field-row">
+      <text class="field-label">优惠码</text>
+      <input class="field-input" value="{{couponCode}}" placeholder="如 PEACH10" bindinput="onCouponInput" />
+    </view>
+    <text wx:if="{{couponError}}" class="coupon-tip">{{couponError}}</text>
+  </view>
+
+  <view class="card">
+    <text class="section-title">配送方式</text>
+    <view class="option-row">
+      <button wx:for="{{deliveryOptions}}" wx:key="type" class="option-btn {{deliveryType == item.type ? 'active' : ''}} {{!item.enabled ? 'disabled' : ''}}" disabled="{{!item.enabled}}" data-type="{{item.type}}" bindtap="selectDelivery">{{item.label}}</button>
+    </view>
+    <text class="delivery-tip">配送方式会随规格变化；例如部分袋装仅支持自提。</text>
+    <view wx:if="{{deliveryType == 'pickup'}}" class="pickup-list">
+      <view class="location-row">
+        <text class="location-tip">{{locationTip}}</text>
+        <button size="mini" class="ghost-btn locate-btn" loading="{{isLocating}}" disabled="{{isLocating}}" bindtap="refreshUserLocation">重新定位</button>
+      </view>
+      <view wx:if="{{!pickupPoints.length}}" class="express-tip">当前规格暂时没有可用自提点，请联系商家或切换配送方式。</view>
+      <view wx:for="{{pickupPoints}}" wx:key="id" class="pickup-item {{selectedPickupId == item.id ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="selectPickup">
+        <view>
+          <text class="pickup-name">{{item.name}}</text>
+          <text class="pickup-address">{{item.address}}</text>
+          <text class="pickup-address">{{item.openTime}}｜{{item.phone}}</text>
+          <text wx:if="{{item.notice}}" class="pickup-address">说明：{{item.notice}}</text>
+        </view>
+        <text class="distance">{{item.distanceLabel}}</text>
+      </view>
+    </view>
+    <view wx:else class="express-form">
+      <view class="address-book-head">
+        <text>常用地址</text>
+        <button size="mini" class="ghost-btn" bindtap="goAddress">管理地址</button>
+      </view>
+      <view wx:if="{{addresses.length}}" class="address-book">
+        <view wx:for="{{addresses}}" wx:key="id" class="address-chip {{selectedAddressId == item.id ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="selectAddress">
+          <text class="address-chip-title">{{item.receiver}}｜{{item.maskedPhone}}</text>
+          <text class="address-chip-text">{{item.address}}</text>
+        </view>
+      </view>
+      <view class="field-row express-field">
+        <text class="field-label">收货人</text>
+        <input class="field-input" value="{{expressReceiver}}" placeholder="请输入收货人姓名" bindinput="onExpressReceiverInput" />
+      </view>
+      <view class="field-row express-field">
+        <text class="field-label">收货手机</text>
+        <input class="field-input" type="number" maxlength="11" value="{{expressPhone}}" placeholder="默认可填下单手机号" bindinput="onExpressPhoneInput" />
+      </view>
+      <view class="express-address-block">
+        <text class="field-label address-label">快递地址</text>
+        <textarea class="address-input" maxlength="160" value="{{expressAddress}}" placeholder="请输入省市区、街道门牌号等完整地址" bindinput="onExpressAddressInput"></textarea>
+      </view>
+      <view class="save-address-row">
+        <text>支付后保存为默认地址</text>
+        <switch checked="{{saveAddressToBook}}" color="#ff7a90" bindchange="onSaveAddressSwitch" />
+      </view>
+      <view class="express-tip">商家发货后，可在订单详情查看快递公司和单号。</view>
+    </view>
+  </view>
+
+  <view class="card amount-card">
+    <text class="section-title">价格明细</text>
+    <view wx:for="{{trace}}" wx:key="type" class="amount-row discount-row">
+      <text>{{item.label}}</text>
+      <text>-¥{{item.amountText}}</text>
+    </view>
+    <view class="amount-row">
+      <text>商品金额</text>
+      <text>¥{{price.goodsPayAmountText}}</text>
+    </view>
+    <view class="amount-row">
+      <text>{{price.shippingLabel}}</text>
+      <text>{{price.shippingFee > 0 ? '¥' + price.shippingFeeText : '免运费'}}</text>
+    </view>
+    <text wx:if="{{price.shippingRuleNote}}" class="delivery-tip">{{price.shippingRuleNote}}</text>
+  </view>
+
+  <view class="card">
+    <text class="section-title">备注</text>
+    <textarea class="note-input" maxlength="120" placeholder="可填写自提/配送备注" bindinput="onNoteInput"></textarea>
+  </view>
+
+  <view class="pay-dock">
+    <view class="pay-summary">
+      <text class="pay-label">应付</text>
+      <text class="pay-amount">¥{{price.payAmountText}}</text>
+    </view>
+    <button wx:if="{{phone}}" class="primary-btn pay-btn" loading="{{isPaying}}" disabled="{{isPaying}}" bindtap="simulatePay">提交订单</button>
+    <button wx:else class="primary-btn pay-btn" open-type="getPhoneNumber" loading="{{isBindingPhone || isPaying}}" disabled="{{isBindingPhone || isPaying}}" bindgetphonenumber="onSubmitPhoneNumber">授权并提交订单</button>
+  </view>
+</view>

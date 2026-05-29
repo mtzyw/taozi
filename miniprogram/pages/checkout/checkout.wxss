@@ -1,0 +1,384 @@
+.checkout-page {
+  padding-bottom: calc(190rpx + env(safe-area-inset-bottom));
+}
+
+.card {
+  margin-bottom: 24rpx;
+  padding: 28rpx;
+  border-radius: 30rpx;
+  background: #ffffff;
+  box-shadow: 0 14rpx 42rpx rgba(66, 38, 28, 0.07);
+}
+
+.product-summary {
+  display: flex;
+  align-items: center;
+  gap: 22rpx;
+  background: linear-gradient(145deg, #ffffff 0%, #fff8f5 100%);
+}
+
+.summary-image {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 22rpx;
+  background: #f6e8e2;
+}
+
+.summary-copy {
+  flex: 1;
+}
+
+.summary-title,
+.summary-subtitle,
+.section-title,
+.field-label,
+.pickup-name,
+.pickup-address {
+  display: block;
+}
+
+.summary-title {
+  color: #2f1f1c;
+  font-size: 32rpx;
+  font-weight: 900;
+}
+
+.summary-subtitle {
+  margin-top: 12rpx;
+  color: #8a6d64;
+  font-size: 24rpx;
+}
+
+.summary-price {
+  display: inline-block;
+  margin-top: 12rpx;
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  color: #e54862;
+  background: #fff0f2;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.section-title {
+  margin-bottom: 20rpx;
+  color: #2f1f1c;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 22rpx;
+  margin-top: 16rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 22rpx;
+  background: #fffaf7;
+}
+
+.field-label {
+  width: 120rpx;
+  color: #7b5b54;
+  font-size: 26rpx;
+}
+
+.field-input {
+  flex: 1;
+  height: 74rpx;
+  padding: 0;
+  background: transparent;
+  font-size: 26rpx;
+}
+
+.phone-auth-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 150rpx;
+  height: 60rpx;
+  margin: 0;
+  padding: 0 18rpx;
+  border: 2rpx solid #ffd4dc;
+  border-radius: 999rpx;
+  color: #e54862;
+  background: #fff4f6;
+  font-size: 23rpx;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.coupon-tip {
+  display: block;
+  margin: 12rpx 0 0 142rpx;
+  color: #e54862;
+  font-size: 22rpx;
+  line-height: 1.45;
+}
+
+.option-row {
+  display: flex;
+  gap: 18rpx;
+}
+
+.option-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 76rpx;
+  margin: 0;
+  padding: 0;
+  line-height: 1;
+  color: #7b5b54;
+  background: #fff8f5;
+  border-radius: 999rpx;
+  font-size: 30rpx;
+  font-weight: 800;
+}
+
+.option-btn.active {
+  color: #ffffff;
+  background: #ff7a90;
+}
+
+.option-btn.disabled {
+  color: #c7b6b0;
+  background: #f6f0ed;
+}
+
+.delivery-tip {
+  display: block;
+  margin-top: 14rpx;
+  color: #a8847a;
+  font-size: 22rpx;
+}
+
+.pickup-list {
+  margin-top: 22rpx;
+}
+
+.location-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+  padding: 16rpx 18rpx;
+  border-radius: 20rpx;
+  background: #fff8f5;
+}
+
+.location-tip {
+  flex: 1;
+  color: #8a6d64;
+  font-size: 22rpx;
+  line-height: 1.45;
+}
+
+.locate-btn {
+  flex-shrink: 0;
+}
+
+.pickup-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+  padding: 22rpx;
+  border: 2rpx solid #f2dfd8;
+  border-radius: 24rpx;
+  background: #fffdfb;
+}
+
+.pickup-item.selected {
+  border-color: #ff7a90;
+  background: linear-gradient(145deg, #fff5f6 0%, #fffaf7 100%);
+  box-shadow: 0 10rpx 26rpx rgba(229, 72, 98, 0.08);
+}
+
+.pickup-name {
+  color: #2f1f1c;
+  font-size: 28rpx;
+  font-weight: 800;
+}
+
+.pickup-address {
+  margin-top: 8rpx;
+  color: #8a6d64;
+  font-size: 23rpx;
+  line-height: 1.45;
+}
+
+.distance {
+  flex-shrink: 0;
+  color: #e54862;
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.express-form {
+  margin-top: 22rpx;
+}
+
+.address-book-head,
+.save-address-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #6f4b43;
+  font-size: 26rpx;
+}
+
+.address-book {
+  margin-top: 16rpx;
+}
+
+.address-chip {
+  margin-bottom: 14rpx;
+  padding: 18rpx;
+  border: 2rpx solid #f2dfd8;
+  border-radius: 22rpx;
+  background: #fffdfb;
+}
+
+.address-chip.selected {
+  border-color: #ff7a90;
+  background: #fff5f6;
+}
+
+.address-chip-title,
+.address-chip-text {
+  display: block;
+}
+
+.address-chip-title {
+  color: #2f1f1c;
+  font-size: 26rpx;
+  font-weight: 900;
+}
+
+.address-chip-text {
+  margin-top: 8rpx;
+  color: #8a6d64;
+  font-size: 23rpx;
+  line-height: 1.45;
+}
+
+.express-field {
+  margin-top: 14rpx;
+}
+
+.express-address-block {
+  margin-top: 18rpx;
+}
+
+.address-label {
+  width: auto;
+  margin-bottom: 12rpx;
+}
+
+.address-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 150rpx;
+  padding: 20rpx;
+  border-radius: 22rpx;
+  background: #fff8f5;
+  font-size: 26rpx;
+}
+
+.express-tip {
+  margin-top: 16rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 20rpx;
+  background: #fff8f5;
+  color: #8a6d64;
+  font-size: 24rpx;
+  line-height: 1.55;
+}
+
+.save-address-row {
+  margin-top: 18rpx;
+}
+
+.amount-card {
+  border: 2rpx solid #ffe1d8;
+}
+
+.amount-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14rpx;
+  color: #6f4b43;
+  font-size: 26rpx;
+}
+
+.discount-row {
+  color: #e54862;
+}
+
+.note-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 150rpx;
+  padding: 20rpx;
+  border-radius: 22rpx;
+  background: #fff8f5;
+  font-size: 26rpx;
+}
+
+.pay-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 88rpx;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+  font-size: 31rpx;
+  box-shadow: 0 14rpx 32rpx rgba(229, 72, 98, 0.22);
+}
+
+.pay-dock {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 22rpx;
+  box-sizing: border-box;
+  padding: 20rpx 28rpx calc(20rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid #f6ded7;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 -12rpx 36rpx rgba(66, 38, 28, 0.08);
+}
+
+.pay-summary {
+  width: 238rpx;
+}
+
+.pay-label,
+.pay-amount {
+  display: block;
+}
+
+.pay-label {
+  color: #8a6d64;
+  font-size: 23rpx;
+}
+
+.pay-amount {
+  margin-top: 4rpx;
+  color: #e54862;
+  font-size: 42rpx;
+  font-weight: 900;
+  line-height: 1.1;
+}

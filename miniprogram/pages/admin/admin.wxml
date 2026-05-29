@@ -1,0 +1,356 @@
+<view wx:if="{{authorized}}" class="container admin-page">
+  <view class="admin-hero">
+    <text class="admin-eyebrow">OPERATION ONLY</text>
+    <text class="admin-title">桃子预售运营端</text>
+    <text class="admin-desc">当前管理员：{{currentAdminText}}。现在支持商品编辑、预售批次、运费规则、订单筛选与售后状态。</text>
+  </view>
+
+  <view class="card product-create-card">
+    <text class="section-title">{{productForm.id ? '编辑预售商品' : '新增预售商品'}}</text>
+    <text class="section-desc">新增后默认上架；库存为 0 时会自动显示为售罄。盒装/袋装可同时创建并独立库存。</text>
+    <view wx:if="{{productForm.id}}" class="editing-tip">正在编辑：{{productForm.name}}</view>
+    <view class="form-field">
+      <text class="form-label">商品名称</text>
+      <input class="form-input" value="{{productForm.name}}" placeholder="例如：端午精品蜜桃礼盒" data-field="name" bindinput="onProductFormInput" />
+    </view>
+    <view class="form-field">
+      <text class="form-label">卖点描述</text>
+      <input class="form-input" value="{{productForm.subtitle}}" placeholder="例如：现摘大果，企业团购优先" data-field="subtitle" bindinput="onProductFormInput" />
+    </view>
+    <view class="form-field">
+      <text class="form-label">商品主图</text>
+      <view wx:if="{{productForm.coverImage}}" class="cover-preview">
+        <image class="cover-image" src="{{productForm.coverImage}}" mode="aspectFill" />
+        <view class="cover-actions">
+          <button size="mini" class="secondary-btn cover-btn" loading="{{imageSaving}}" bindtap="chooseProductImage">更换图片</button>
+          <button size="mini" class="ghost-btn cover-btn" bindtap="removeProductImage">移除</button>
+        </view>
+      </view>
+      <view wx:else class="cover-uploader" bindtap="chooseProductImage">
+        <text class="cover-plus">＋</text>
+        <text class="cover-title">{{imageSaving ? '保存中...' : '上传/选择商品主图'}}</text>
+        <text class="cover-tip">建议使用横图，未上传时会使用默认配图</text>
+      </view>
+    </view>
+    <view class="form-grid">
+      <view class="form-field">
+        <text class="form-label">价格/元</text>
+        <input class="form-input" type="digit" value="{{productForm.salePriceYuan}}" placeholder="108" data-field="salePriceYuan" bindinput="onProductFormInput" />
+      </view>
+    </view>
+    <view class="form-field">
+      <text class="form-label">规格重量</text>
+      <input class="form-input" value="{{productForm.weightText}}" placeholder="约 6 斤" data-field="weightText" bindinput="onProductFormInput" />
+    </view>
+    <view class="form-field">
+      <text class="form-label">包装类型（可多选，库存独立管理）</text>
+      <view class="mode-row">
+        <button size="mini" class="mode-btn {{productForm.packageBox ? 'active' : ''}}" data-field="packageBox" bindtap="toggleProductOption">盒装</button>
+        <button size="mini" class="mode-btn {{productForm.packageBag ? 'active' : ''}}" data-field="packageBag" bindtap="toggleProductOption">袋装</button>
+      </view>
+    </view>
+    <view class="form-grid">
+      <view wx:if="{{productForm.packageBox}}" class="form-field">
+        <text class="form-label">盒装库存</text>
+        <input class="form-input" type="number" value="{{productForm.boxStock}}" placeholder="勾选盒装时必填且大于0" data-field="boxStock" bindinput="onProductFormInput" />
+      </view>
+      <view wx:if="{{productForm.packageBag}}" class="form-field">
+        <text class="form-label">袋装库存</text>
+        <input class="form-input" type="number" value="{{productForm.bagStock}}" placeholder="勾选袋装时必填且大于0" data-field="bagStock" bindinput="onProductFormInput" />
+      </view>
+    </view>
+    <view class="form-field">
+      <text class="form-label">配送方式（可多选）</text>
+      <view class="mode-row">
+        <button size="mini" class="mode-btn {{productForm.deliveryPickup ? 'active' : ''}}" data-field="deliveryPickup" bindtap="toggleProductOption">自提</button>
+        <button size="mini" class="mode-btn {{productForm.deliveryExpress ? 'active' : ''}}" data-field="deliveryExpress" bindtap="toggleProductOption">快递</button>
+      </view>
+    </view>
+    <view class="form-field">
+      <text class="form-label">销售类型</text>
+      <view class="mode-row">
+        <button size="mini" class="mode-btn {{productForm.saleType !== 'direct' ? 'active' : ''}}" data-type="presale" bindtap="setProductSaleType">预售</button>
+        <button size="mini" class="mode-btn {{productForm.saleType === 'direct' ? 'active' : ''}}" data-type="direct" bindtap="setProductSaleType">直售</button>
+      </view>
+    </view>
+    <view class="form-field">
+      <text class="form-label">标签</text>
+      <input class="form-input" value="{{productForm.tagsText}}" placeholder="用空格或逗号分隔" data-field="tagsText" bindinput="onProductFormInput" />
+    </view>
+    <view class="form-field">
+      <text class="form-label">预售批次</text>
+      <input class="form-input" value="{{productForm.batchName}}" placeholder="例如：第一批早桃预售" data-field="batchName" bindinput="onProductFormInput" />
+    </view>
+    <view wx:if="{{productForm.saleType !== 'direct'}}" class="form-grid">
+      <view class="form-field">
+        <text class="form-label">履约开始</text>
+        <input class="form-input" value="{{productForm.shipStart}}" placeholder="2026-06-22" data-field="shipStart" bindinput="onProductFormInput" />
+      </view>
+      <view class="form-field">
+        <text class="form-label">履约结束</text>
+        <input class="form-input" value="{{productForm.shipEnd}}" placeholder="2026-07-03" data-field="shipEnd" bindinput="onProductFormInput" />
+      </view>
+    </view>
+    <view wx:if="{{productForm.saleType !== 'direct'}}" class="form-field">
+      <text class="form-label">截单时间</text>
+      <input class="form-input" value="{{productForm.orderDeadline}}" placeholder="2026-06-18 22:00" data-field="orderDeadline" bindinput="onProductFormInput" />
+    </view>
+    <view class="form-field">
+      <text class="form-label">预售说明</text>
+      <textarea class="form-textarea" value="{{productForm.presaleNote}}" placeholder="例如：预计 6 月下旬成熟后按批次发货/自提。" data-field="presaleNote" bindinput="onProductFormInput"></textarea>
+    </view>
+    <view class="pickup-action-row">
+      <button class="primary-btn" bindtap="saveProduct">{{productForm.id ? '保存商品' : '新增并上架'}}</button>
+      <button wx:if="{{productForm.id}}" class="ghost-btn" bindtap="resetProductForm">取消编辑</button>
+    </view>
+  </view>
+
+  <view class="card">
+    <text class="section-title">手机号白名单导入</text>
+    <text class="section-desc">导入后，用户绑定对应手机号即可全站显示折扣价。后续接后端时可扩展分层会员价。</text>
+    <textarea class="import-input" value="{{importText}}" placeholder="一行一个手机号，或用逗号/空格分隔" bindinput="onImportInput"></textarea>
+    <view class="discount-row">
+      <text>折扣</text>
+      <input class="discount-input" type="number" value="{{discountPercent}}" bindinput="onDiscountInput" />
+      <text>折</text>
+    </view>
+    <button class="primary-btn" bindtap="saveWhitelist">导入白名单</button>
+    <view class="white-list">
+      <text class="mini-title">已导入 {{whitelistEntries.length}} 个</text>
+      <view wx:for="{{whitelistEntries}}" wx:for-item="white" wx:key="phone" class="white-item">
+        <text>{{white.maskedPhone}}</text>
+        <text>{{white.label}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="card shipping-rule-card">
+    <text class="section-title">运费与包邮规则</text>
+    <text class="section-desc">自提默认免运费；快递订单会在结算页自动计算运费。</text>
+    <view class="form-grid">
+      <view class="form-field">
+        <text class="form-label">快递运费/元</text>
+        <input class="form-input" type="digit" value="{{shippingRuleForm.expressBaseFeeYuan}}" data-field="expressBaseFeeYuan" bindinput="onShippingRuleInput" />
+      </view>
+      <view class="form-field">
+        <text class="form-label">满额包邮/元</text>
+        <input class="form-input" type="digit" value="{{shippingRuleForm.freeShippingThresholdYuan}}" data-field="freeShippingThresholdYuan" bindinput="onShippingRuleInput" />
+      </view>
+    </view>
+    <view class="form-field">
+      <text class="form-label">自提服务费/元</text>
+      <input class="form-input" type="digit" value="{{shippingRuleForm.pickupFeeYuan}}" data-field="pickupFeeYuan" bindinput="onShippingRuleInput" />
+    </view>
+    <view class="form-field">
+      <text class="form-label">运费说明</text>
+      <textarea class="form-textarea" value="{{shippingRuleForm.note}}" placeholder="例如：自提免运费，快递满 198 元包邮。" data-field="note" bindinput="onShippingRuleInput"></textarea>
+    </view>
+    <button class="primary-btn" bindtap="saveShippingRule">保存运费规则</button>
+  </view>
+
+  <view class="card">
+    <text class="section-title">商品与库存</text>
+    <text class="section-desc">库存按规格管理，盒装/袋装独立入库；商品总库存自动汇总。总库存归零会自动售罄。</text>
+    <view wx:for="{{products}}" wx:for-item="product" wx:key="id" class="product-admin">
+      <view class="product-line">
+        <view>
+          <view class="product-title-row">
+            <text class="product-name">{{product.name}}</text>
+            <text class="source-tag">{{product.sourceText}}</text>
+          </view>
+          <text class="product-meta">价格 ¥{{product.priceText}}｜{{product.statusText}}</text>
+          <text class="product-meta">{{product.stockSummaryText}}</text>
+          <text class="product-meta">{{product.presaleWindowText}}</text>
+          <view class="chip-row">
+            <text class="info-chip">包装：{{product.packageText}}</text>
+            <text class="info-chip">配送：{{product.deliveryText}}</text>
+          </view>
+        </view>
+      </view>
+      <view class="action-row">
+        <button size="mini" class="secondary-btn" data-id="{{product.id}}" bindtap="editProduct">编辑</button>
+        <button size="mini" class="secondary-btn" data-id="{{product.id}}" bindtap="manualOn">上架</button>
+        <button size="mini" class="ghost-btn" data-id="{{product.id}}" bindtap="manualOff">手动下架</button>
+        <button size="mini" class="ghost-btn" data-id="{{product.id}}" bindtap="zeroStock">全部归零</button>
+        <button size="mini" class="danger-btn" data-id="{{product.id}}" bindtap="deleteProduct">删除</button>
+      </view>
+      <view wx:for="{{product.stockRows}}" wx:for-item="skuRow" wx:key="skuId" class="sku-stock-row">
+        <view class="sku-stock-head">
+          <text class="sku-stock-name">{{skuRow.name}}</text>
+          <text class="sku-stock-count">{{skuRow.packageLabel}} {{skuRow.stockSummaryText}}</text>
+        </view>
+        <view class="stock-row">
+          <input class="stock-input" type="number" placeholder="输入数量" data-key="{{skuRow.inputKey}}" bindinput="onStockInput" />
+          <button size="mini" class="primary-btn stock-btn" data-id="{{skuRow.productId}}" data-skuid="{{skuRow.skuId}}" data-key="{{skuRow.inputKey}}" bindtap="applyStock">设为库存</button>
+          <button size="mini" class="secondary-btn stock-btn" data-id="{{skuRow.productId}}" data-skuid="{{skuRow.skuId}}" data-key="{{skuRow.inputKey}}" bindtap="addStock">补货</button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card pickup-card">
+    <text class="section-title">自提点管理</text>
+    <text class="section-desc">买家端会读取这里维护的启用点位，并按用户附近位置排序；不同点位可限定只支持盒装或袋装。</text>
+    <view wx:if="{{pickupForm.id}}" class="editing-tip">正在编辑：{{pickupForm.name}}</view>
+    <view class="form-field">
+      <text class="form-label">自提点名称</text>
+      <input class="form-input" value="{{pickupForm.name}}" placeholder="例如：城南社区团购点" data-field="name" bindinput="onPickupFormInput" />
+    </view>
+    <view class="form-field">
+      <text class="form-label">详细地址</text>
+      <input class="form-input" value="{{pickupForm.address}}" placeholder="请输入街道、门牌号" data-field="address" bindinput="onPickupFormInput" />
+    </view>
+    <view class="form-grid">
+      <view class="form-field">
+        <text class="form-label">纬度</text>
+        <input class="form-input" type="digit" value="{{pickupForm.latitude}}" placeholder="30.657" data-field="latitude" bindinput="onPickupFormInput" />
+      </view>
+      <view class="form-field">
+        <text class="form-label">经度</text>
+        <input class="form-input" type="digit" value="{{pickupForm.longitude}}" placeholder="104.066" data-field="longitude" bindinput="onPickupFormInput" />
+      </view>
+    </view>
+    <view class="form-grid">
+      <view class="form-field">
+        <text class="form-label">联系电话</text>
+        <input class="form-input" value="{{pickupForm.phone}}" placeholder="如 028-0000-0000" data-field="phone" bindinput="onPickupFormInput" />
+      </view>
+      <view class="form-field">
+        <text class="form-label">自提时间</text>
+        <input class="form-input" value="{{pickupForm.openTime}}" placeholder="10:00-20:00" data-field="openTime" bindinput="onPickupFormInput" />
+      </view>
+    </view>
+    <view class="form-grid">
+      <view class="form-field">
+        <text class="form-label">每日容量</text>
+        <input class="form-input" type="number" value="{{pickupForm.dailyCapacity}}" placeholder="不填为不限" data-field="dailyCapacity" bindinput="onPickupFormInput" />
+      </view>
+      <view class="form-field">
+        <text class="form-label">排序权重</text>
+        <input class="form-input" type="number" value="{{pickupForm.sortWeight}}" placeholder="越小越靠前" data-field="sortWeight" bindinput="onPickupFormInput" />
+      </view>
+    </view>
+    <view class="form-field">
+      <text class="form-label">支持包装</text>
+      <view class="mode-row">
+        <button size="mini" class="mode-btn {{pickupForm.packageBox ? 'active' : ''}}" data-field="packageBox" bindtap="togglePickupOption">盒装</button>
+        <button size="mini" class="mode-btn {{pickupForm.packageBag ? 'active' : ''}}" data-field="packageBag" bindtap="togglePickupOption">袋装</button>
+        <button size="mini" class="mode-btn {{pickupForm.enabled ? 'active' : ''}}" data-field="enabled" bindtap="togglePickupOption">{{pickupForm.enabled ? '启用中' : '停用'}}</button>
+      </view>
+    </view>
+    <view class="form-field">
+      <text class="form-label">点位说明</text>
+      <textarea class="form-textarea" value="{{pickupForm.notice}}" placeholder="例如：请凭核销码取货，团长可代收。" data-field="notice" bindinput="onPickupFormInput"></textarea>
+    </view>
+    <view class="pickup-action-row">
+      <button class="primary-btn" bindtap="savePickupPoint">{{pickupForm.id ? '保存自提点' : '新增自提点'}}</button>
+      <button wx:if="{{pickupForm.id}}" class="ghost-btn" bindtap="resetPickupForm">取消编辑</button>
+    </view>
+
+    <view class="pickup-list-admin">
+      <text class="mini-title">当前点位 {{pickupPoints.length}} 个</text>
+      <view wx:for="{{pickupPoints}}" wx:for-item="point" wx:key="id" class="pickup-admin-item {{point.enabled ? '' : 'disabled'}}">
+        <view class="pickup-admin-head">
+          <view>
+            <view class="product-title-row">
+              <text class="product-name">{{point.name}}</text>
+              <text class="source-tag">{{point.sourceText}}</text>
+            </view>
+            <text class="product-meta">{{point.address}}</text>
+          </view>
+          <text class="pickup-status {{point.enabled ? 'on' : 'off'}}">{{point.enabledText}}</text>
+        </view>
+        <view class="chip-row">
+          <text class="info-chip">包装：{{point.packageText}}</text>
+          <text class="info-chip">容量：{{point.capacityText}}</text>
+          <text class="info-chip">时间：{{point.openTime || '未设置'}}</text>
+          <text class="info-chip">坐标：{{point.locationText}}</text>
+        </view>
+        <text wx:if="{{point.phone}}" class="product-meta">联系电话：{{point.phone}}</text>
+        <text wx:if="{{point.notice}}" class="product-meta">说明：{{point.notice}}</text>
+        <view class="action-row">
+          <button size="mini" class="secondary-btn" data-id="{{point.id}}" bindtap="editPickupPoint">编辑</button>
+          <button size="mini" class="ghost-btn" data-id="{{point.id}}" bindtap="togglePickupEnabled">{{point.enabled ? '停用' : '启用'}}</button>
+          <button size="mini" class="danger-btn" data-id="{{point.id}}" bindtap="deletePickupPoint">删除</button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <text class="section-title">订单履约与售后</text>
+    <text class="section-desc">可按状态、配送方式和关键词筛选订单；快递发货、自提核销、售后、退款都从这里处理。</text>
+    <view class="filter-block">
+      <input class="form-input" value="{{orderFilter.keyword}}" placeholder="搜订单号、手机号、商品、自提码" bindinput="onOrderKeywordInput" />
+      <view class="filter-row">
+        <button wx:for="{{orderStatusFilters}}" wx:for-item="filter" wx:key="key" size="mini" class="filter-btn {{orderFilter.status == filter.key ? 'active' : ''}}" data-status="{{filter.key}}" bindtap="setOrderStatusFilter">{{filter.label}}</button>
+      </view>
+      <view class="filter-row">
+        <button wx:for="{{orderDeliveryFilters}}" wx:for-item="filter" wx:key="key" size="mini" class="filter-btn {{orderFilter.deliveryType == filter.key ? 'active' : ''}}" data-delivery="{{filter.key}}" bindtap="setOrderDeliveryFilter">{{filter.label}}</button>
+      </view>
+    </view>
+    <view wx:if="{{orders.length}}">
+      <view wx:for="{{orders}}" wx:for-item="order" wx:key="id" class="order-admin-item">
+        <view class="order-admin-head">
+          <view>
+            <text class="order-title">{{order.itemName}}</text>
+            <text class="order-meta">{{order.itemSpec}}｜{{order.maskedPhone}}｜实付 ¥{{order.payAmountText}}</text>
+            <text class="order-meta">{{order.deliveryText}}｜{{order.statusText}}｜{{order.createdAtText}}</text>
+            <text wx:if="{{order.hasShippingFee}}" class="order-meta">{{order.shippingLabel || '运费'}}：{{order.shippingFee > 0 ? '¥' + order.shippingFeeText : '免运费'}}</text>
+          </view>
+          <text class="order-id-mini">{{order.id}}</text>
+        </view>
+
+        <view wx:if="{{order.deliveryType == 'express'}}" class="fulfillment-box">
+          <text class="mini-title">快递履约</text>
+          <text wx:if="{{order.expressInfo}}" class="product-meta">收货：{{order.expressInfo.receiver}}｜{{order.expressInfo.address}}</text>
+          <view class="stock-row">
+            <input class="stock-input" value="{{order.shipmentCompanyInput}}" placeholder="快递公司" data-id="{{order.id}}" data-field="company" bindinput="onShipmentInput" />
+            <input class="stock-input" value="{{order.shipmentTrackingInput}}" placeholder="快递单号" data-id="{{order.id}}" data-field="trackingNo" bindinput="onShipmentInput" />
+          </view>
+          <view class="action-row">
+            <button wx:if="{{order.canShip}}" size="mini" class="primary-btn" data-id="{{order.id}}" bindtap="shipOrder">上传并标记发货</button>
+            <button wx:if="{{order.canComplete}}" size="mini" class="secondary-btn" data-id="{{order.id}}" bindtap="completeOrder">完成订单</button>
+            <button wx:if="{{order.canCancel}}" size="mini" class="ghost-btn" data-id="{{order.id}}" bindtap="cancelOrder">取消订单</button>
+          </view>
+          <text wx:if="{{order.shippedText}}" class="product-meta">已发货时间：{{order.shippedText}}</text>
+        </view>
+
+        <view wx:else class="fulfillment-box">
+          <text class="mini-title">自提核销</text>
+          <text class="product-meta">自提点：{{order.pickupPointName || '未选择'}}｜核销码：{{order.pickupCodeText}}</text>
+          <view class="action-row">
+            <button wx:if="{{order.canPickup}}" size="mini" class="primary-btn" data-id="{{order.id}}" bindtap="markPickedUp">标记已自提</button>
+            <button wx:if="{{order.canComplete}}" size="mini" class="secondary-btn" data-id="{{order.id}}" bindtap="completeOrder">完成订单</button>
+            <button wx:if="{{order.canCancel}}" size="mini" class="ghost-btn" data-id="{{order.id}}" bindtap="cancelOrder">取消订单</button>
+          </view>
+        </view>
+
+        <view class="fulfillment-box aftersale-box">
+          <text class="mini-title">客服与售后</text>
+          <text wx:if="{{order.afterSaleInfo}}" class="product-meta">售后原因：{{order.afterSaleInfo.reason}}</text>
+          <input class="form-input" value="{{order.afterSaleReasonInput}}" placeholder="填写坏果/少发/补偿备注" data-id="{{order.id}}" bindinput="onAfterSaleInput" />
+          <view class="action-row">
+            <button wx:if="{{order.canAfterSale}}" size="mini" class="ghost-btn" data-id="{{order.id}}" bindtap="markAfterSale">标记售后</button>
+            <button wx:if="{{order.canRefund}}" size="mini" class="danger-btn" data-id="{{order.id}}" bindtap="markRefunded">标记已退款</button>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="empty">暂无匹配订单，调整筛选或让买家端模拟支付后再查看。</view>
+  </view>
+
+  <button class="ghost-btn" bindtap="goHome">返回</button>
+</view>
+
+<view wx:else class="container admin-page">
+  <view class="admin-hero">
+    <text class="admin-eyebrow">OPERATION ONLY</text>
+    <text class="admin-title">需要管理员权限</text>
+    <text class="admin-desc">{{adminAuthDesc}}</text>
+  </view>
+  <view wx:if="{{canSetupAdmin}}" class="primary-btn setup-action" bindtap="setupCurrentAsAdmin">
+    {{setupAdminText}}
+  </view>
+  <button wx:else class="primary-btn" bindtap="goHome">回到我的</button>
+</view>
