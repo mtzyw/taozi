@@ -303,6 +303,13 @@ function migrate() {
       status TEXT NOT NULL DEFAULT 'awaiting_shipment',
       status_text TEXT DEFAULT '',
       sale_type TEXT NOT NULL DEFAULT 'presale',
+      wechat_openid TEXT DEFAULT '',
+      wechat_shipping_status TEXT DEFAULT '',
+      wechat_shipping_synced_at TEXT DEFAULT '',
+      wechat_shipping_error TEXT DEFAULT '',
+      wechat_shipping_type INTEGER NOT NULL DEFAULT 0,
+      wechat_shipping_payload_json TEXT DEFAULT '',
+      wechat_shipping_response_json TEXT DEFAULT '',
       delivery_type TEXT NOT NULL DEFAULT 'pickup',
       pickup_point_id TEXT DEFAULT '',
       pickup_point_name TEXT DEFAULT '',
@@ -420,6 +427,13 @@ function migrate() {
   ensureColumn('orders', 'paid_at', "TEXT DEFAULT ''");
   ensureColumn('orders', 'payment_expires_at', "TEXT DEFAULT ''");
   ensureColumn('orders', 'sale_type', "TEXT NOT NULL DEFAULT 'presale'");
+  ensureColumn('orders', 'wechat_openid', "TEXT DEFAULT ''");
+  ensureColumn('orders', 'wechat_shipping_status', "TEXT DEFAULT ''");
+  ensureColumn('orders', 'wechat_shipping_synced_at', "TEXT DEFAULT ''");
+  ensureColumn('orders', 'wechat_shipping_error', "TEXT DEFAULT ''");
+  ensureColumn('orders', 'wechat_shipping_type', "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn('orders', 'wechat_shipping_payload_json', "TEXT DEFAULT ''");
+  ensureColumn('orders', 'wechat_shipping_response_json', "TEXT DEFAULT ''");
   ensureColumn('orders', 'after_sale_status', "TEXT DEFAULT ''");
   ensureColumn('orders', 'refund_amount_cents', "INTEGER NOT NULL DEFAULT 0");
   ensureColumn('orders', 'after_sale_refund_note', "TEXT DEFAULT ''");
@@ -1178,6 +1192,25 @@ function bindWechatUserPhone(openid, phone) {
   return upsertWechatUser({ openid, phone: normalizedPhone });
 }
 
+function findWechatOpenidByPhone(phone) {
+  const normalizedPhone = String(phone || '').replace(/\D/g, '');
+  if (!/^1\d{10}$/.test(normalizedPhone)) return '';
+  const rows = db.prepare('SELECT openid FROM wechat_users WHERE phone = ? ORDER BY datetime(updated_at) DESC').all(normalizedPhone);
+  const uniqueOpenids = [...new Set(rows.map((row) => String(row.openid || '').trim()).filter(Boolean))];
+  return uniqueOpenids.length === 1 ? uniqueOpenids[0] : '';
+}
+
+function updateOrderWechatOpenid(id, openid) {
+  const orderId = String(id || '').trim();
+  const value = String(openid || '').trim();
+  if (!orderId || !value) return getOrder(orderId);
+  const current = db.prepare('SELECT wechat_openid FROM orders WHERE id = ?').get(orderId);
+  if (!current) return null;
+  if (current.wechat_openid && current.wechat_openid !== value) return getOrder(orderId);
+  db.prepare('UPDATE orders SET wechat_openid = ?, updated_at = ? WHERE id = ?').run(value, nowIso(), orderId);
+  return getOrder(orderId);
+}
+
 function getShippingRule() {
   const row = db.prepare('SELECT * FROM shipping_rules WHERE id = ?').get('default');
   if (!row) return DEFAULT_SHIPPING_RULE;
@@ -1686,6 +1719,13 @@ function rowToOrder(row) {
     status: row.status,
     statusText: row.status_text || row.status,
     saleType: normalizeSaleType(row.sale_type || primaryItem.saleType),
+    wechatOpenid: row.wechat_openid || '',
+    wechatShipping: {
+      status: row.wechat_shipping_status || '',
+      syncedAt: row.wechat_shipping_synced_at || '',
+      error: row.wechat_shipping_error || '',
+      logisticsType: Number(row.wechat_shipping_type || 0)
+    },
     deliveryType: row.delivery_type,
     pickupPointId: row.pickup_point_id,
     pickupPointName: row.pickup_point_name,
@@ -2445,6 +2485,50 @@ function updateOrderStatus(id, payload) {
   return row ? rowToOrder(row) : null;
 }
 
+function markWechatShippingSync(id, payload = {}) {
+  const orderId = String(id || '').trim();
+  if (!orderId) return null;
+  const now = nowIso();
+  const status = String(payload.status || '').trim();
+  const syncedAt = payload.syncedAt || (status === 'success' ? now : '');
+  const error = status === 'success' ? '' : String(payload.error || '').slice(0, 1000);
+  const payloadJson = payload.payload ? JSON.stringify(payload.payload) : '';
+  const responseJson = payload.response ? JSON.stringify(payload.response) : '';
+  db.exec('BEGIN');
+  try {
+    db.prepare(`
+      UPDATE orders SET
+        wechat_shipping_status = ?,
+        wechat_shipping_synced_at = ?,
+        wechat_shipping_error = ?,
+        wechat_shipping_type = ?,
+        wechat_shipping_payload_json = ?,
+        wechat_shipping_response_json = ?,
+        updated_at = ?
+      WHERE id = ?
+    `).run(
+      status,
+      syncedAt,
+      error,
+      Number(payload.logisticsType || 0),
+      payloadJson,
+      responseJson,
+      now,
+      orderId
+    );
+    addFulfillmentLog(
+      orderId,
+      status === 'success' ? 'wechat_shipping_synced' : 'wechat_shipping_failed',
+      status === 'success' ? '微信小程序订单发货信息已同步' : `微信小程序订单发货同步失败：${error || '未知错误'}`
+    );
+    db.exec('COMMIT');
+  } catch (errorObject) {
+    db.exec('ROLLBACK');
+    throw errorObject;
+  }
+  return getOrder(orderId);
+}
+
 function importedRowValue(row, keys) {
   for (const key of keys) {
     if (row && row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
@@ -2668,7 +2752,11 @@ function releaseExpiredPaymentOrders(referenceTime = nowIso()) {
 function payOrder(id, options = {}) {
   const current = db.prepare('SELECT * FROM orders WHERE id = ?').get(id);
   if (!current) return null;
-  if (current.status !== 'awaiting_payment') return rowToOrder(current);
+  const optionWechatOpenid = String(options.wechatOpenid || options.openid || '').trim();
+  if (current.status !== 'awaiting_payment') {
+    if (optionWechatOpenid && !current.wechat_openid) return updateOrderWechatOpenid(id, optionWechatOpenid);
+    return rowToOrder(current);
+  }
   const now = nowIso();
   if (current.payment_expires_at && new Date(current.payment_expires_at).getTime() <= new Date(now).getTime()) {
     db.exec('BEGIN');
@@ -2683,6 +2771,7 @@ function payOrder(id, options = {}) {
   }
   const nextStatus = current.delivery_type === 'express' ? 'awaiting_shipment' : 'awaiting_pickup';
   const nextStatusText = current.delivery_type === 'express' ? '待发货' : '待自提';
+  const nextWechatOpenid = String(optionWechatOpenid || current.wechat_openid || '').trim();
   db.exec('BEGIN');
   try {
     db.prepare(`
@@ -2690,9 +2779,10 @@ function payOrder(id, options = {}) {
         status = ?,
         status_text = ?,
         paid_at = ?,
+        wechat_openid = ?,
         updated_at = ?
       WHERE id = ?
-    `).run(nextStatus, nextStatusText, now, now, id);
+    `).run(nextStatus, nextStatusText, now, nextWechatOpenid, now, id);
     const paidRow = db.prepare('SELECT * FROM orders WHERE id = ?').get(id);
     recordCouponUsageForOrder(paidRow);
     addFulfillmentLog(id, options.action || 'mock_paid', options.detail || '支付成功');
@@ -2939,6 +3029,8 @@ module.exports = {
   upsertWechatUser,
   getWechatUser,
   bindWechatUserPhone,
+  findWechatOpenidByPhone,
+  updateOrderWechatOpenid,
   getShippingRule,
   saveShippingRule,
   listWhitelistEntries,
@@ -2963,6 +3055,7 @@ module.exports = {
   createStorefrontOrder,
   payOrder,
   updateOrderStatus,
+  markWechatShippingSync,
   importExpressShipments,
   importPickupShipments,
   orderBusinessStats,

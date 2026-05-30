@@ -7,6 +7,7 @@ const { URL } = require('url');
 const db = require('./db');
 const xpyun = require('./xpyun');
 const wechatPay = require('./wechat-pay');
+const wechatShipping = require('./wechat-shipping');
 
 const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -104,6 +105,92 @@ function autoPrintPaidOrder(order, trigger = 'auto') {
   const printerStatus = xpyun.configStatus();
   if (!printerStatus.configured || !printerStatus.autoPrint) return;
   printOrderLabelWithLog(order, trigger).catch(() => {});
+}
+
+function canSyncWechatShipping(order) {
+  if (!order || !order.id || order.status === 'awaiting_payment') return false;
+  if (order.deliveryType === 'express') return order.status === 'shipped' && order.expressShipment && order.expressShipment.trackingNo;
+  if (order.deliveryType === 'pickup') {
+    return ['pickup_shipped', 'picked_up', 'completed', 'after_sale', 'refunded'].includes(order.status)
+      && Boolean(order.pickupArrivedAt || order.shippedAt || order.pickedUpAt);
+  }
+  return false;
+}
+
+function publicWechatShippingSyncResult(result) {
+  if (!result) return null;
+  return {
+    ok: Boolean(result.ok),
+    skipped: Boolean(result.skipped),
+    status: result.status || '',
+    reason: result.reason || '',
+    error: result.error || ''
+  };
+}
+
+function attachWechatOpenidFallback(order) {
+  if (!order || order.wechatOpenid) return order;
+  const openid = db.findWechatOpenidByPhone(order.buyerPhone || order.contactPhone);
+  if (!openid) return order;
+  return db.updateOrderWechatOpenid(order.id, openid) || order;
+}
+
+async function syncWechatShippingForOrder(orderOrId, trigger = 'manual') {
+  let order = typeof orderOrId === 'string' ? db.getOrder(orderOrId) : orderOrId;
+  if (!order || !order.id) return { ok: false, skipped: true, reason: '订单不存在' };
+  const configStatus = wechatShipping.configStatus();
+  if (!configStatus.enabled) return { ok: true, skipped: true, reason: '微信发货同步未启用' };
+  if (!configStatus.configured) {
+    return { ok: false, skipped: true, reason: `微信发货配置不完整：${configStatus.missing.join('、')}` };
+  }
+  order = attachWechatOpenidFallback(order);
+  if (!canSyncWechatShipping(order)) {
+    return { ok: true, skipped: true, reason: '当前订单状态暂不需要同步微信发货' };
+  }
+  if (order.wechatShipping && order.wechatShipping.status === 'success') {
+    return { ok: true, skipped: true, reason: '已同步微信发货' };
+  }
+  try {
+    const accessToken = await getWechatAccessToken();
+    const result = await wechatShipping.uploadShippingInfo({ accessToken, order });
+    db.markWechatShippingSync(order.id, {
+      status: 'success',
+      logisticsType: result.payload.logistics_type,
+      payload: result.payload,
+      response: result.response,
+      syncedAt: result.uploadedAt
+    });
+    db.addOperationLog({
+      action: 'wechat_shipping.sync_success',
+      targetType: 'order',
+      targetId: order.id,
+      detail: JSON.stringify({ trigger, logisticsType: result.payload.logistics_type })
+    });
+    return { ok: true, skipped: false, status: 'success' };
+  } catch (error) {
+    db.markWechatShippingSync(order.id, {
+      status: 'failed',
+      logisticsType: order.deliveryType === 'express' ? 1 : 4,
+      payload: error.payload || null,
+      response: error.response || null,
+      error: error.message
+    });
+    db.addOperationLog({
+      action: 'wechat_shipping.sync_failed',
+      targetType: 'order',
+      targetId: order.id,
+      detail: JSON.stringify({ trigger, error: error.message })
+    });
+    return { ok: false, skipped: false, status: 'failed', error: error.message };
+  }
+}
+
+async function syncWechatShippingForMatchedOrders(result, trigger) {
+  if (!result || !Array.isArray(result.matched)) return result;
+  for (const item of result.matched) {
+    item.wechatShipping = publicWechatShippingSyncResult(await syncWechatShippingForOrder(item.orderId, trigger));
+  }
+  return result;
 }
 
 function hasWechatConfig() {
@@ -1466,9 +1553,10 @@ async function handleApi(req, res, url) {
         sendError(res, 401, '请先完成微信登录后再支付');
         return;
       }
-      const payment = await wechatPay.createJsapiPayment({ order: beforeOrder, openid: session.openid });
+      const orderForPayment = db.updateOrderWechatOpenid(orderId, session.openid) || beforeOrder;
+      const payment = await wechatPay.createJsapiPayment({ order: orderForPayment, openid: session.openid });
       db.addOperationLog({ action: 'wechat_pay.prepay', targetType: 'order', targetId: orderId, detail: payment.prepayId });
-      sendJson(res, { order: beforeOrder, payment: payment.params, paymentMode: 'wechat' });
+      sendJson(res, { order: orderForPayment, payment: payment.params, paymentMode: 'wechat' });
       return;
     }
     const order = db.payOrder(orderId);
@@ -1509,7 +1597,8 @@ async function handleApi(req, res, url) {
       const beforeOrder = db.getOrder(outTradeNo);
       const order = db.payOrder(outTradeNo, {
         action: 'wechat_paid',
-        detail: `微信支付成功${transaction.transaction_id ? `：${transaction.transaction_id}` : ''}`
+        detail: `微信支付成功${transaction.transaction_id ? `：${transaction.transaction_id}` : ''}`,
+        wechatOpenid: transaction.payer && transaction.payer.openid || ''
       });
       db.addOperationLog({ action: 'wechat_pay.notify_success', targetType: 'order', targetId: outTradeNo, detail: JSON.stringify({ transactionId: transaction.transaction_id || '', tradeState: transaction.trade_state || '' }) });
       if (beforeOrder && beforeOrder.status === 'awaiting_payment') autoPrintPaidOrder(order, 'wechat.notify');
@@ -1761,6 +1850,7 @@ async function handleApi(req, res, url) {
   if (method === 'POST' && pathname === '/api/orders/import-express-shipments') {
     const body = await readBody(req, 8 * 1024 * 1024);
     const result = db.importExpressShipments(shipmentRowsFromUpload(body, 'express'));
+    await syncWechatShippingForMatchedOrders(result, 'import.express');
     db.addOperationLog({
       action: 'order.import.express',
       targetType: 'order',
@@ -1773,6 +1863,7 @@ async function handleApi(req, res, url) {
   if (method === 'POST' && pathname === '/api/orders/import-pickup-shipments') {
     const body = await readBody(req, 8 * 1024 * 1024);
     const result = db.importPickupShipments(shipmentRowsFromUpload(body, 'pickup'));
+    await syncWechatShippingForMatchedOrders(result, 'import.pickup');
     db.addOperationLog({
       action: 'order.import.pickup',
       targetType: 'order',
@@ -1895,8 +1986,19 @@ async function handleApi(req, res, url) {
     const body = await readBody(req);
     const orderId = decodeURIComponent(orderStatusMatch[1]);
     const order = db.updateOrderStatus(orderId, body);
+    const wechatShippingResult = (body.status === 'shipped' || body.status === 'pickup_shipped')
+      ? await syncWechatShippingForOrder(order, `status.${body.status}`)
+      : null;
     db.addOperationLog({ action: 'order.status', targetType: 'order', targetId: orderId, detail: body.status });
-    sendJson(res, { order });
+    sendJson(res, { order: db.getOrder(orderId), wechatShipping: publicWechatShippingSyncResult(wechatShippingResult) });
+    return;
+  }
+
+  const orderWechatShippingMatch = pathname.match(/^\/api\/orders\/([^/]+)\/wechat-shipping-sync$/);
+  if (orderWechatShippingMatch && method === 'POST') {
+    const orderId = decodeURIComponent(orderWechatShippingMatch[1]);
+    const result = await syncWechatShippingForOrder(orderId, 'admin.retry');
+    sendJson(res, { order: db.getOrder(orderId), wechatShipping: publicWechatShippingSyncResult(result) });
     return;
   }
 
