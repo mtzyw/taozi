@@ -577,6 +577,7 @@ function afterSaleStatusText(status) {
   return {
     requested: '已申请',
     processing: '处理中',
+    refund_processing: '退款处理中',
     approved: '已同意',
     rejected: '已拒绝',
     refunded: '已退款'
@@ -1042,6 +1043,15 @@ function isOrderRefundProcessed(order) {
     order.status === 'refunded'
     || order.refundedAt
     || String(order.afterSaleInfo && order.afterSaleInfo.status || '') === 'refunded'
+    || String(order.wechatRefund && order.wechatRefund.status || '').toUpperCase() === 'SUCCESS'
+  ));
+}
+
+function isOrderRefundProcessing(order) {
+  const status = String(order && order.wechatRefund && order.wechatRefund.status || '').toUpperCase();
+  return Boolean(order && (
+    String(order.afterSaleInfo && order.afterSaleInfo.status || '') === 'refund_processing'
+    || ['PENDING_SUBMIT', 'PROCESSING'].includes(status)
   ));
 }
 
@@ -1060,7 +1070,7 @@ function canShowAfterSaleInfo(order) {
 }
 
 function canProcessRefund(order) {
-  return hasAfterSaleRequest(order) && String(order.status || '') === 'after_sale' && !isOrderRefundProcessed(order);
+  return hasAfterSaleRequest(order) && String(order.status || '') === 'after_sale' && !isOrderRefundProcessed(order) && !isOrderRefundProcessing(order);
 }
 
 function syncPendingPaymentVisibility() {
@@ -2159,6 +2169,13 @@ function bindEvents() {
           { label: '退款处理备注', value: info.refundNote || '-' },
           { label: '退款处理时间', value: info.handledAt || order.refundedAt || '-' }
         );
+      } else if (isOrderRefundProcessing(order)) {
+        afterSaleDetails.push(
+          { label: '退款处理备注', value: info.refundNote || '-' },
+          { label: '微信退款状态', value: order.wechatRefund && order.wechatRefund.status || 'PROCESSING' },
+          { label: '微信退款单号', value: order.wechatRefund && order.wechatRefund.outRefundNo || '-' },
+          { label: '提交时间', value: order.wechatRefund && order.wechatRefund.requestedAt || '-' }
+        );
       }
       await showInfo('售后信息', {
         details: afterSaleDetails
@@ -2175,7 +2192,7 @@ function bindEvents() {
       const values = await showForm({
         title: '退款处理',
         eyebrow: '谨慎操作',
-        message: '确认后订单会标记为已退款，请核对金额和备注。',
+        message: '正式微信支付订单会提交微信原路退款；微信确认成功后才会标记为已退款。',
         fields: [
           { name: 'amountText', label: '退款金额（元）', type: 'number', step: '0.01', min: '0.01', value: defaultAmount, required: true },
           { name: 'reason', label: '退款处理备注', type: 'textarea', rows: 4, value: order.afterSaleInfo && order.afterSaleInfo.refundNote || '退款处理', required: true }
@@ -2188,12 +2205,12 @@ function bindEvents() {
       const refundAmount = Math.round(Number(amountText || 0) * 100);
       if (!Number.isFinite(refundAmount) || refundAmount <= 0) return toast('请输入有效退款金额');
       const reason = String(values.reason || '').trim();
-      await api(`/api/orders/${encodeURIComponent(id)}/status`, {
+      const result = await api(`/api/orders/${encodeURIComponent(id)}/status`, {
         method: 'POST',
         body: JSON.stringify({ status: 'refunded', refundNote: reason, reason, refundAmount, detail: reason })
       });
       await load();
-      toast('退款状态已更新');
+      toast(result.wechatRefund && result.wechatRefund.mode === 'wechat' ? (result.wechatRefund.message || '微信退款已提交') : '退款状态已更新');
     }
 	    if (action === 'edit-product') {
       const product = state.products.find((item) => item.id === id);

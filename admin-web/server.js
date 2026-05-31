@@ -117,6 +117,53 @@ function canSyncWechatShipping(order) {
   return false;
 }
 
+function receiptTargetStatus(order) {
+  if (!order || !order.id) return '';
+  if (order.deliveryType === 'express') {
+    return ['shipped', 'completed'].includes(order.status) ? 'completed' : '';
+  }
+  if (order.deliveryType === 'pickup') {
+    return ['pickup_shipped', 'picked_up'].includes(order.status) ? 'picked_up' : '';
+  }
+  return '';
+}
+
+function isWechatReceiptConfirmed(order) {
+  return Boolean(order && order.wechatReceipt && order.wechatReceipt.confirmedAt);
+}
+
+function canOpenWechatOrderConfirm(order) {
+  if (!order || !receiptTargetStatus(order)) return false;
+  if (isWechatReceiptConfirmed(order)) return false;
+  return order.wechatShipping && order.wechatShipping.status === 'success';
+}
+
+function withStorefrontOrderCapabilities(order) {
+  if (!order || !order.id) return order;
+  const configStatus = wechatShipping.configStatus();
+  const enabled = configStatus.enabled && configStatus.configured;
+  const available = enabled && canOpenWechatOrderConfirm(order);
+  const reason = !enabled
+    ? '微信订单确认配置未启用'
+    : (isWechatReceiptConfirmed(order)
+        ? '微信侧已确认收货'
+        : (!receiptTargetStatus(order)
+            ? '当前订单状态不需要确认收货'
+            : (!order.wechatShipping || order.wechatShipping.status !== 'success'
+                ? '微信发货信息同步成功后才能确认收货'
+                : '')));
+  return {
+    ...order,
+    wechatOrderConfirm: {
+      available,
+      reason: available ? '' : reason,
+      businessType: 'weappOrderConfirm',
+      buttonText: order.deliveryType === 'pickup' ? '确认已领取' : '确认收货',
+      extraData: available ? wechatShipping.buildOrderConfirmExtraData(order) : null
+    }
+  };
+}
+
 function publicWechatShippingSyncResult(result) {
   if (!result) return null;
   return {
@@ -128,11 +175,201 @@ function publicWechatShippingSyncResult(result) {
   };
 }
 
+function publicWechatRefundResult(result) {
+  if (!result) return null;
+  return {
+    ok: Boolean(result.ok),
+    mode: result.mode || '',
+    status: result.status || '',
+    outRefundNo: result.outRefundNo || '',
+    refundId: result.refundId || '',
+    message: result.message || '',
+    error: result.error || ''
+  };
+}
+
 function attachWechatOpenidFallback(order) {
   if (!order || order.wechatOpenid) return order;
   const openid = db.findWechatOpenidByPhone(order.buyerPhone || order.contactPhone);
   if (!openid) return order;
   return db.updateOrderWechatOpenid(order.id, openid) || order;
+}
+
+async function processOrderRefund(orderId, body = {}) {
+  const order = db.getOrder(orderId);
+  if (!order) throw new Error('订单不存在');
+  const refundAmount = Math.round(Number(body.refundAmountCents ?? body.refundAmount ?? 0));
+  if (!Number.isFinite(refundAmount) || refundAmount <= 0) throw new Error('请输入有效退款金额');
+  if (refundAmount > Math.round(Number(order.payAmount || 0))) throw new Error('退款金额不能大于订单实付金额');
+  const refundNote = String(body.refundNote ?? body.reason ?? body.detail ?? '').trim();
+
+  if (!wechatPay.isEnabled()) {
+    return {
+      order: db.updateOrderStatus(orderId, {
+        ...body,
+        status: 'refunded',
+        refundAmount,
+        refundNote,
+        reason: refundNote,
+        detail: refundNote || '退款处理'
+      }),
+      wechatRefund: { ok: true, mode: 'local', status: 'LOCAL_REFUNDED', message: '本地模拟退款已完成' }
+    };
+  }
+
+  const payStatus = wechatPay.configStatus();
+  if (!payStatus.configured) {
+    throw new Error(`微信支付配置不完整：${payStatus.missing.join('、')}`);
+  }
+  const outRefundNo = order.wechatRefund && order.wechatRefund.outRefundNo
+    ? order.wechatRefund.outRefundNo
+    : wechatPay.buildRefundNo(order.id);
+
+  db.markWechatRefundRequested(order.id, {
+    outRefundNo,
+    status: 'PENDING_SUBMIT',
+    refundAmount,
+    refundNote,
+    action: 'wechat_refund_submitting',
+    detail: '正在提交微信原路退款'
+  });
+
+  try {
+    const refund = await wechatPay.createRefund({
+      order,
+      refundAmountCents: refundAmount,
+      reason: refundNote || '订单售后退款',
+      outRefundNo
+    });
+    db.markWechatRefundRequested(order.id, {
+      outRefundNo: refund.outRefundNo,
+      refundId: refund.refundId,
+      status: refund.status || 'PROCESSING',
+      response: refund.response,
+      refundAmount,
+      refundNote,
+      allowExistingRefundUpdate: true,
+      action: 'wechat_refund_requested',
+      detail: '微信原路退款已提交，等待微信退款结果'
+    });
+    const normalizedStatus = String(refund.status || '').toUpperCase();
+    let updatedOrder = db.getOrder(order.id);
+    if (normalizedStatus === 'SUCCESS') {
+      updatedOrder = db.completeWechatRefund(order.id, {
+          outRefundNo: refund.outRefundNo,
+          refundId: refund.refundId,
+          status: normalizedStatus,
+          response: refund.response,
+          refundAmount,
+          refundNote,
+          action: 'wechat_refund_success',
+          detail: '微信原路退款成功'
+        });
+    } else if (['ABNORMAL', 'CLOSED', 'FAILED'].includes(normalizedStatus)) {
+      updatedOrder = db.markWechatRefundFailed(order.id, {
+        outRefundNo: refund.outRefundNo,
+        refundId: refund.refundId,
+        status: normalizedStatus,
+        response: refund.response,
+        error: normalizedStatus === 'CLOSED' ? '微信退款已关闭' : '微信退款状态异常',
+        action: 'wechat_refund_failed'
+      });
+    }
+    return {
+      order: updatedOrder,
+      wechatRefund: {
+        ok: true,
+        mode: 'wechat',
+        status: normalizedStatus || 'PROCESSING',
+        outRefundNo: refund.outRefundNo,
+        refundId: refund.refundId,
+        message: normalizedStatus === 'SUCCESS' ? '微信退款成功' : '微信退款已提交，等待微信回调确认'
+      }
+    };
+  } catch (error) {
+    db.markWechatRefundFailed(order.id, {
+      status: 'SUBMIT_FAILED',
+      error: error.message,
+      action: 'wechat_refund_submit_failed'
+    });
+    throw error;
+  }
+}
+
+async function confirmWechatReceiptForOrder(orderId, payload = {}) {
+  let order = db.getOrder(orderId);
+  if (!order) return { confirmed: false, error: '订单不存在' };
+  const targetStatus = receiptTargetStatus(order);
+  if (!targetStatus) {
+    return {
+      confirmed: isWechatReceiptConfirmed(order),
+      skipped: true,
+      message: isWechatReceiptConfirmed(order) ? '微信侧已确认收货' : '当前订单状态不能确认收货',
+      order: withStorefrontOrderCapabilities(order)
+    };
+  }
+  if (isWechatReceiptConfirmed(order)) {
+    return {
+      confirmed: true,
+      skipped: true,
+      message: '微信侧已确认收货',
+      order: withStorefrontOrderCapabilities(order)
+    };
+  }
+
+  const session = getWechatSession(payload.sessionId);
+  if (!session || !session.openid) throw new Error('请先完成微信登录后再确认收货');
+  order = attachWechatOpenidFallback(order);
+  if (order.wechatOpenid && order.wechatOpenid !== session.openid) {
+    throw new Error('当前微信账号与订单支付账号不一致，不能确认该订单');
+  }
+
+  const configStatus = wechatShipping.configStatus();
+  if (!configStatus.enabled) throw new Error('微信订单确认未启用');
+  if (!configStatus.configured) {
+    throw new Error(`微信订单确认配置不完整：${configStatus.missing.join('、')}`);
+  }
+  if (!order.wechatShipping || order.wechatShipping.status !== 'success') {
+    throw new Error('该订单还没有成功同步微信发货信息，暂不能确认收货');
+  }
+
+  const accessToken = await getWechatAccessToken();
+  const wechatOrder = await wechatShipping.getOrder({ accessToken, order });
+  const confirmedStates = [3, 4, 6];
+  if (!confirmedStates.includes(Number(wechatOrder.orderState || 0))) {
+    return {
+      confirmed: false,
+      wechatOrderState: wechatOrder.orderState,
+      message: '微信侧尚未完成确认收货，请在弹出的微信确认收货组件中完成确认。',
+      order: withStorefrontOrderCapabilities(order)
+    };
+  }
+
+  const detail = order.deliveryType === 'pickup'
+    ? '用户通过微信确认收货组件确认已领取'
+    : '用户通过微信确认收货组件确认收货';
+  db.markWechatReceiptConfirmed(order.id, {
+    orderState: wechatOrder.orderState,
+    response: wechatOrder.response
+  });
+  const updated = order.status === targetStatus
+    ? db.getOrder(order.id)
+    : db.updateOrderStatus(order.id, {
+        status: targetStatus,
+        action: 'wechat_receipt_confirmed',
+        detail
+      });
+  db.addOperationLog({
+    action: 'wechat_receipt.confirmed',
+    targetType: 'order',
+    targetId: order.id,
+    detail: JSON.stringify({ orderState: wechatOrder.orderState })
+  });
+  return {
+    confirmed: true,
+    wechatOrderState: wechatOrder.orderState,
+    order: withStorefrontOrderCapabilities(updated)
+  };
 }
 
 async function syncWechatShippingForOrder(orderOrId, trigger = 'manual') {
@@ -1504,7 +1741,7 @@ async function handleApi(req, res, url) {
       sendError(res, 404, '订单不存在');
       return;
     }
-    sendJson(res, { order });
+    sendJson(res, { order: withStorefrontOrderCapabilities(order) });
     return;
   }
 
@@ -1526,6 +1763,14 @@ async function handleApi(req, res, url) {
     sendJson(res, {
       order: db.requestAfterSale({ ...body, orderId: decodeURIComponent(storefrontAfterSaleMatch[1]) })
     });
+    return;
+  }
+
+  const storefrontConfirmReceiptMatch = pathname.match(/^\/api\/storefront\/orders\/([^/]+)\/wechat-receipt-confirm$/);
+  if (storefrontConfirmReceiptMatch && method === 'POST') {
+    const body = await readBody(req);
+    const result = await confirmWechatReceiptForOrder(decodeURIComponent(storefrontConfirmReceiptMatch[1]), body);
+    sendJson(res, result);
     return;
   }
 
@@ -1598,12 +1843,50 @@ async function handleApi(req, res, url) {
       const order = db.payOrder(outTradeNo, {
         action: 'wechat_paid',
         detail: `微信支付成功${transaction.transaction_id ? `：${transaction.transaction_id}` : ''}`,
-        wechatOpenid: transaction.payer && transaction.payer.openid || ''
+        wechatOpenid: transaction.payer && transaction.payer.openid || '',
+        wechatTransactionId: transaction.transaction_id || ''
       });
       db.addOperationLog({ action: 'wechat_pay.notify_success', targetType: 'order', targetId: outTradeNo, detail: JSON.stringify({ transactionId: transaction.transaction_id || '', tradeState: transaction.trade_state || '' }) });
       if (beforeOrder && beforeOrder.status === 'awaiting_payment') autoPrintPaidOrder(order, 'wechat.notify');
     } else {
       db.addOperationLog({ action: 'wechat_pay.notify_ignored', targetType: 'order', targetId: outTradeNo, detail: JSON.stringify({ tradeState: transaction.trade_state || '' }) });
+    }
+    sendJson(res, { code: 'SUCCESS', message: '成功' });
+    return;
+  }
+
+  if (method === 'POST' && pathname === '/api/storefront/wechat-pay/refund-notify') {
+    const rawBody = await readRawBody(req, 64 * 1024);
+    const rawText = rawBody.toString('utf8');
+    wechatPay.verifyNotifySignature(req.headers, rawText);
+    const body = rawText ? JSON.parse(rawText) : {};
+    const refund = wechatPay.parseRefundNotify(body);
+    const outTradeNo = String(refund.out_trade_no || '').trim();
+    if (!outTradeNo) throw new Error('微信退款通知缺少商户订单号');
+    const refundStatus = String(refund.refund_status || refund.status || '').toUpperCase();
+    const refundAmount = refund.amount && Number(refund.amount.refund || 0) || 0;
+    if (refundStatus === 'SUCCESS') {
+      db.completeWechatRefund(outTradeNo, {
+        outRefundNo: refund.out_refund_no || '',
+        refundId: refund.refund_id || '',
+        status: refundStatus,
+        response: refund,
+        ...(refundAmount > 0 ? { refundAmount } : {}),
+        action: 'wechat_refund_notify_success',
+        detail: '微信退款回调确认成功'
+      });
+      db.addOperationLog({ action: 'wechat_refund.notify_success', targetType: 'order', targetId: outTradeNo, detail: JSON.stringify({ refundId: refund.refund_id || '', outRefundNo: refund.out_refund_no || '' }) });
+    } else if (['ABNORMAL', 'CLOSED', 'FAILED'].includes(refundStatus)) {
+      db.markWechatRefundFailed(outTradeNo, {
+        refundId: refund.refund_id || '',
+        status: refundStatus,
+        response: refund,
+        error: refundStatus === 'CLOSED' ? '微信退款已关闭' : '微信退款状态异常',
+        action: 'wechat_refund_notify_failed'
+      });
+      db.addOperationLog({ action: 'wechat_refund.notify_failed', targetType: 'order', targetId: outTradeNo, detail: JSON.stringify({ refundStatus, refundId: refund.refund_id || '' }) });
+    } else {
+      db.addOperationLog({ action: 'wechat_refund.notify_ignored', targetType: 'order', targetId: outTradeNo, detail: JSON.stringify({ refundStatus, refundId: refund.refund_id || '' }) });
     }
     sendJson(res, { code: 'SUCCESS', message: '成功' });
     return;
@@ -1985,6 +2268,15 @@ async function handleApi(req, res, url) {
   if (orderStatusMatch && method === 'POST') {
     const body = await readBody(req);
     const orderId = decodeURIComponent(orderStatusMatch[1]);
+    if (body.status === 'refunded') {
+      const result = await processOrderRefund(orderId, body);
+      db.addOperationLog({ action: 'order.refund', targetType: 'order', targetId: orderId, detail: body.refundNote || body.reason || '' });
+      sendJson(res, {
+        order: result.order,
+        wechatRefund: publicWechatRefundResult(result.wechatRefund)
+      });
+      return;
+    }
     const order = db.updateOrderStatus(orderId, body);
     const wechatShippingResult = (body.status === 'shipped' || body.status === 'pickup_shipped')
       ? await syncWechatShippingForOrder(order, `status.${body.status}`)

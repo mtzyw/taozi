@@ -44,6 +44,12 @@
     </view>
   </view>
 
+  <view wx:if="{{order.canConfirmReceipt}}" class="card receipt-card">
+    <text class="section-title">{{order.receiptActionText}}</text>
+    <text class="receipt-tip">{{order.receiptTip}}</text>
+    <button class="primary-btn receipt-btn" loading="{{isConfirmingReceipt}}" disabled="{{isConfirmingReceipt}}" bindtap="confirmReceipt">{{order.receiptActionText}}</button>
+  </view>
+
   <view class="card">
     <text class="section-title">金额明细</text>
     <view wx:for="{{order.trace}}" wx:key="type" class="line discount"><text>{{item.label}}</text><text>-¥{{item.amountText}}</text></view>

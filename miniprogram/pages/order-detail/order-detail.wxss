@@ -157,6 +157,22 @@
   background: #fff8f5;
 }
 
+.receipt-card {
+  border: 2rpx solid #ffd8cf;
+}
+
+.receipt-tip {
+  display: block;
+  margin-bottom: 20rpx;
+  color: #8a6d64;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.receipt-btn {
+  margin-top: 8rpx;
+}
+
 .more-btn {
   display: flex;
   align-items: center;

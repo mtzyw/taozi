@@ -251,6 +251,10 @@ async function requestAfterSale(orderId, payload) {
   return data.order || null;
 }
 
+async function confirmWechatReceipt(orderId, payload = {}) {
+  return request(`/api/storefront/orders/${encodeURIComponent(orderId)}/wechat-receipt-confirm`, 'POST', payload);
+}
+
 async function pickupStaffLogin(payload) {
   const data = await request('/api/storefront/pickup-staff/login', 'POST', payload);
   return data.session || null;
@@ -297,6 +301,7 @@ module.exports = {
   listOrders,
   getOrderById,
   requestAfterSale,
+  confirmWechatReceipt,
   pickupStaffLogin,
   lookupPickupStaffOrder,
   confirmPickupStaffOrder,

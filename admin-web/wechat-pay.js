@@ -15,6 +15,7 @@ function boolEnv(value, defaultValue = false) {
 }
 
 function getConfig() {
+  const notifyUrl = process.env.WECHAT_PAY_NOTIFY_URL || '';
   return {
     enabled: boolEnv(process.env.WECHAT_PAY_ENABLED, false),
     appid: process.env.WECHAT_PAY_APPID || process.env.WECHAT_APPID || process.env.WX_APPID || '',
@@ -22,7 +23,8 @@ function getConfig() {
     serialNo: process.env.WECHAT_PAY_MCH_SERIAL_NO || '',
     privateKeyPath: process.env.WECHAT_PAY_PRIVATE_KEY_PATH || '',
     apiV3Key: process.env.WECHAT_PAY_API_V3_KEY || '',
-    notifyUrl: process.env.WECHAT_PAY_NOTIFY_URL || '',
+    notifyUrl,
+    refundNotifyUrl: process.env.WECHAT_PAY_REFUND_NOTIFY_URL || notifyUrl.replace(/\/notify$/, '/refund-notify'),
     platformCertPath: process.env.WECHAT_PAY_PLATFORM_CERT_PATH || process.env.WECHAT_PAY_PLATFORM_PUBLIC_KEY_PATH || '',
     platformSerialNo: process.env.WECHAT_PAY_PLATFORM_SERIAL_NO || '',
     verifyNotifySignature: boolEnv(process.env.WECHAT_PAY_VERIFY_NOTIFY_SIGNATURE, false),
@@ -181,6 +183,39 @@ async function createJsapiPayment({ order, openid }) {
   };
 }
 
+function buildRefundNo(orderId) {
+  const safeId = String(orderId || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 52);
+  if (!safeId) throw new Error('缺少订单号，无法生成退款单号');
+  return `refund_${safeId}`.slice(0, 64);
+}
+
+async function createRefund({ order, refundAmountCents, reason, outRefundNo }) {
+  assertConfigured();
+  const config = getConfig();
+  if (!order || !order.id) throw new Error('订单不存在，无法发起微信退款');
+  const refund = yuanCents(refundAmountCents);
+  const total = yuanCents(order.payAmount);
+  if (refund > total) throw new Error('退款金额不能大于订单实付金额');
+  const payload = {
+    out_trade_no: String(order.id),
+    out_refund_no: String(outRefundNo || buildRefundNo(order.id)),
+    reason: truncateByChars(reason || '订单售后退款', 80),
+    amount: {
+      refund,
+      total,
+      currency: 'CNY'
+    }
+  };
+  if (config.refundNotifyUrl) payload.notify_url = config.refundNotifyUrl;
+  const data = await requestWechatPay('POST', '/v3/refund/domestic/refunds', payload);
+  return {
+    outRefundNo: payload.out_refund_no,
+    refundId: data.refund_id || '',
+    status: data.status || '',
+    response: data
+  };
+}
+
 function decryptNotifyResource(resource = {}) {
   const config = getConfig();
   const key = Buffer.from(config.apiV3Key || '', 'utf8');
@@ -232,11 +267,21 @@ function parsePaymentNotify(body = {}) {
   return body;
 }
 
+function parseRefundNotify(body = {}) {
+  assertConfigured();
+  if (!body || typeof body !== 'object') throw new Error('微信退款通知内容为空');
+  if (body.resource && body.resource.ciphertext) return decryptNotifyResource(body.resource);
+  return body;
+}
+
 module.exports = {
   configStatus,
   isEnabled,
   isConfigured,
   createJsapiPayment,
+  createRefund,
+  buildRefundNo,
   verifyNotifySignature,
-  parsePaymentNotify
+  parsePaymentNotify,
+  parseRefundNotify
 };

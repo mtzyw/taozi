@@ -156,6 +156,24 @@ function buildShippingPayload(order = {}, uploadTime = new Date()) {
   return payload;
 }
 
+function buildOrderKeyPayload(order = {}) {
+  const config = getConfig();
+  if (!config.mchid) throw new Error('未配置微信发货商户号');
+  if (!order || !order.id) throw new Error('订单不存在，无法查询微信订单');
+  return {
+    merchant_id: config.mchid,
+    merchant_trade_no: String(order.id)
+  };
+}
+
+function buildOrderConfirmExtraData(order = {}) {
+  const payload = buildOrderKeyPayload(order);
+  return {
+    merchant_id: payload.merchant_id,
+    merchant_trade_no: payload.merchant_trade_no
+  };
+}
+
 async function uploadShippingInfo({ accessToken, order }) {
   const token = String(accessToken || '').trim();
   if (!token) throw new Error('缺少微信 access_token，无法同步微信发货');
@@ -188,10 +206,45 @@ async function uploadShippingInfo({ accessToken, order }) {
   };
 }
 
+async function getOrder({ accessToken, order }) {
+  const token = String(accessToken || '').trim();
+  if (!token) throw new Error('缺少微信 access_token，无法查询微信订单');
+  const payload = buildOrderKeyPayload(order);
+  const url = `${getConfig().apiBase}/wxa/sec/order/get_order?access_token=${encodeURIComponent(token)}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const text = await response.text();
+  let data = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch (_) {
+      data = { raw: text };
+    }
+  }
+  if (!response.ok || Number(data.errcode || 0) !== 0) {
+    const error = new Error(data.errmsg || data.message || data.raw || `微信订单查询失败：HTTP ${response.status}`);
+    error.payload = payload;
+    error.response = data;
+    throw error;
+  }
+  return {
+    payload,
+    response: data,
+    order: data.order || null,
+    orderState: Number(data.order && data.order.order_state || 0)
+  };
+}
+
 module.exports = {
   configStatus,
   isEnabled,
   normalizeExpressCompanyCode,
+  buildOrderConfirmExtraData,
   buildShippingPayload,
-  uploadShippingInfo
+  uploadShippingInfo,
+  getOrder
 };

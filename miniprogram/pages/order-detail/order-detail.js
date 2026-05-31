@@ -1,5 +1,6 @@
 const store = require('../../utils/store');
 const backend = require('../../utils/backend');
+const auth = require('../../utils/auth');
 const { formatMoney, maskPhone, statusLabel, formatDateTime } = require('../../utils/format');
 
 function fulfillmentActionLabel(action) {
@@ -11,7 +12,8 @@ function fulfillmentActionLabel(action) {
     completed: '订单完成',
     after_sale: '售后处理',
     refunded: '退款完成',
-    cancelled: '订单取消'
+    cancelled: '订单取消',
+    wechat_receipt_confirmed: '微信确认收货'
   };
   return labels[action] || action || '履约更新';
 }
@@ -70,15 +72,17 @@ Page({
     order: null,
     afterSaleReason: '',
     isSubmittingAfterSale: false,
+    isConfirmingReceipt: false,
     pickupValidityText: ''
   },
 
   onLoad(options) {
-    this.orderId = options.orderId;
+    this.orderId = options.orderId || options.merchant_trade_no || options.merchantTradeNo || '';
     this.loadOrder();
   },
 
   onShow() {
+    this.handleWechatOrderConfirmResult();
     if (this.orderId) this.loadOrder();
   },
 
@@ -163,6 +167,12 @@ Page({
         cancelledAtText: order.cancelledAt ? formatDateTime(order.cancelledAt) : '',
         serviceText: `客服：${order.customerContact || ''}${order.customerContact && order.customerPhone ? '｜' : ''}联系电话：${order.customerPhone || ''}`,
         pickupValidityText: pickupValidityText(order),
+        canConfirmReceipt: Boolean(order.wechatOrderConfirm && order.wechatOrderConfirm.available),
+        receiptActionText: order.wechatOrderConfirm && order.wechatOrderConfirm.buttonText || (order.deliveryType === 'pickup' ? '确认已领取' : '确认收货'),
+        receiptTip: order.deliveryType === 'pickup'
+          ? '领取商品后，请在这里确认已领取；确认后微信订单会进入确认收货流程。'
+          : '收到商品后，请在这里确认收货；确认成功后订单会更新为已完成。',
+        wechatOrderConfirm: order.wechatOrderConfirm || null,
         canApplyAfterSale: canApplyAfterSale(order),
         afterSaleTip: getAfterSaleTip(order),
         trace: normalizeDiscountTrace(order.discountTrace || []),
@@ -175,6 +185,79 @@ Page({
       }
     });
     this.startPickupTimer();
+  },
+
+  consumeWechatOrderConfirmResult() {
+    const app = getApp();
+    const result = app && app.globalData ? app.globalData.wechatOrderConfirmResult : null;
+    if (!result || !result.reqExtraData) return null;
+    const resultOrderId = String(result.reqExtraData.merchant_trade_no || '').trim();
+    if (resultOrderId !== String(this.orderId || '').trim()) return null;
+    app.globalData.wechatOrderConfirmResult = null;
+    return result;
+  },
+
+  async handleWechatOrderConfirmResult() {
+    const result = this.consumeWechatOrderConfirmResult();
+    if (!result) return;
+    if (result.status === 'cancel') {
+      this.setData({ isConfirmingReceipt: false });
+      wx.showToast({ title: '已取消确认收货', icon: 'none' });
+      return;
+    }
+    if (result.status !== 'success') {
+      this.setData({ isConfirmingReceipt: false });
+      wx.showToast({ title: result.errormsg || '确认收货未完成', icon: 'none' });
+      return;
+    }
+    await this.syncWechatReceiptConfirmed();
+  },
+
+  async syncWechatReceiptConfirmed() {
+    this.setData({ isConfirmingReceipt: true });
+    try {
+      const session = await auth.ensureWechatSession();
+      const result = await backend.confirmWechatReceipt(this.orderId, {
+        sessionId: session && session.sessionId || ''
+      });
+      await this.loadOrder();
+      wx.showToast({
+        title: result && result.confirmed ? '确认成功' : '微信尚未确认',
+        icon: result && result.confirmed ? 'success' : 'none'
+      });
+    } catch (error) {
+      wx.showToast({ title: error.message || '确认结果同步失败', icon: 'none' });
+    } finally {
+      this.setData({ isConfirmingReceipt: false });
+    }
+  },
+
+  async confirmReceipt() {
+    const order = this.data.order || {};
+    const config = order.wechatOrderConfirm || {};
+    if (!config.available || !config.extraData) {
+      wx.showToast({ title: config.reason || '当前订单暂不能确认收货', icon: 'none' });
+      return;
+    }
+    if (!wx.openBusinessView) {
+      wx.showToast({ title: '请升级微信后再确认收货', icon: 'none' });
+      return;
+    }
+    this.setData({ isConfirmingReceipt: true });
+    try {
+      await auth.ensureWechatSession();
+      wx.openBusinessView({
+        businessType: config.businessType || 'weappOrderConfirm',
+        extraData: config.extraData,
+        fail: (error) => {
+          this.setData({ isConfirmingReceipt: false });
+          wx.showToast({ title: error && error.errMsg || '确认收货组件打开失败', icon: 'none' });
+        }
+      });
+    } catch (error) {
+      this.setData({ isConfirmingReceipt: false });
+      wx.showToast({ title: error.message || '请先完成微信登录', icon: 'none' });
+    }
   },
 
   backOrders() {

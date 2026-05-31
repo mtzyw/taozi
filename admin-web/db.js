@@ -304,12 +304,23 @@ function migrate() {
       status_text TEXT DEFAULT '',
       sale_type TEXT NOT NULL DEFAULT 'presale',
       wechat_openid TEXT DEFAULT '',
+      wechat_transaction_id TEXT DEFAULT '',
       wechat_shipping_status TEXT DEFAULT '',
       wechat_shipping_synced_at TEXT DEFAULT '',
       wechat_shipping_error TEXT DEFAULT '',
       wechat_shipping_type INTEGER NOT NULL DEFAULT 0,
       wechat_shipping_payload_json TEXT DEFAULT '',
       wechat_shipping_response_json TEXT DEFAULT '',
+      wechat_receipt_confirmed_at TEXT DEFAULT '',
+      wechat_receipt_state INTEGER NOT NULL DEFAULT 0,
+      wechat_receipt_response_json TEXT DEFAULT '',
+      wechat_refund_no TEXT DEFAULT '',
+      wechat_refund_id TEXT DEFAULT '',
+      wechat_refund_status TEXT DEFAULT '',
+      wechat_refund_requested_at TEXT DEFAULT '',
+      wechat_refund_success_at TEXT DEFAULT '',
+      wechat_refund_response_json TEXT DEFAULT '',
+      wechat_refund_error TEXT DEFAULT '',
       delivery_type TEXT NOT NULL DEFAULT 'pickup',
       pickup_point_id TEXT DEFAULT '',
       pickup_point_name TEXT DEFAULT '',
@@ -428,12 +439,23 @@ function migrate() {
   ensureColumn('orders', 'payment_expires_at', "TEXT DEFAULT ''");
   ensureColumn('orders', 'sale_type', "TEXT NOT NULL DEFAULT 'presale'");
   ensureColumn('orders', 'wechat_openid', "TEXT DEFAULT ''");
+  ensureColumn('orders', 'wechat_transaction_id', "TEXT DEFAULT ''");
   ensureColumn('orders', 'wechat_shipping_status', "TEXT DEFAULT ''");
   ensureColumn('orders', 'wechat_shipping_synced_at', "TEXT DEFAULT ''");
   ensureColumn('orders', 'wechat_shipping_error', "TEXT DEFAULT ''");
   ensureColumn('orders', 'wechat_shipping_type', "INTEGER NOT NULL DEFAULT 0");
   ensureColumn('orders', 'wechat_shipping_payload_json', "TEXT DEFAULT ''");
   ensureColumn('orders', 'wechat_shipping_response_json', "TEXT DEFAULT ''");
+  ensureColumn('orders', 'wechat_receipt_confirmed_at', "TEXT DEFAULT ''");
+  ensureColumn('orders', 'wechat_receipt_state', "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn('orders', 'wechat_receipt_response_json', "TEXT DEFAULT ''");
+  ensureColumn('orders', 'wechat_refund_no', "TEXT DEFAULT ''");
+  ensureColumn('orders', 'wechat_refund_id', "TEXT DEFAULT ''");
+  ensureColumn('orders', 'wechat_refund_status', "TEXT DEFAULT ''");
+  ensureColumn('orders', 'wechat_refund_requested_at', "TEXT DEFAULT ''");
+  ensureColumn('orders', 'wechat_refund_success_at', "TEXT DEFAULT ''");
+  ensureColumn('orders', 'wechat_refund_response_json', "TEXT DEFAULT ''");
+  ensureColumn('orders', 'wechat_refund_error', "TEXT DEFAULT ''");
   ensureColumn('orders', 'after_sale_status', "TEXT DEFAULT ''");
   ensureColumn('orders', 'refund_amount_cents', "INTEGER NOT NULL DEFAULT 0");
   ensureColumn('orders', 'after_sale_refund_note', "TEXT DEFAULT ''");
@@ -1720,11 +1742,26 @@ function rowToOrder(row) {
     statusText: row.status_text || row.status,
     saleType: normalizeSaleType(row.sale_type || primaryItem.saleType),
     wechatOpenid: row.wechat_openid || '',
+    wechatPayment: {
+      transactionId: row.wechat_transaction_id || ''
+    },
     wechatShipping: {
       status: row.wechat_shipping_status || '',
       syncedAt: row.wechat_shipping_synced_at || '',
       error: row.wechat_shipping_error || '',
       logisticsType: Number(row.wechat_shipping_type || 0)
+    },
+    wechatReceipt: {
+      confirmedAt: row.wechat_receipt_confirmed_at || '',
+      state: Number(row.wechat_receipt_state || 0)
+    },
+    wechatRefund: {
+      outRefundNo: row.wechat_refund_no || '',
+      refundId: row.wechat_refund_id || '',
+      status: row.wechat_refund_status || '',
+      requestedAt: row.wechat_refund_requested_at || '',
+      successAt: row.wechat_refund_success_at || '',
+      error: row.wechat_refund_error || ''
     },
     deliveryType: row.delivery_type,
     pickupPointId: row.pickup_point_id,
@@ -2529,6 +2566,162 @@ function markWechatShippingSync(id, payload = {}) {
   return getOrder(orderId);
 }
 
+
+function markWechatReceiptConfirmed(id, payload = {}) {
+  const orderId = String(id || '').trim();
+  if (!orderId) return null;
+  const now = nowIso();
+  const responseJson = payload.response ? JSON.stringify(payload.response) : '';
+  db.prepare(`
+    UPDATE orders SET
+      wechat_receipt_confirmed_at = ?,
+      wechat_receipt_state = ?,
+      wechat_receipt_response_json = ?,
+      updated_at = ?
+    WHERE id = ?
+  `).run(
+    payload.confirmedAt || now,
+    Number(payload.orderState || 0),
+    responseJson,
+    now,
+    orderId
+  );
+  return getOrder(orderId);
+}
+
+function stringifyPayload(value) {
+  if (!value) return '';
+  try {
+    return JSON.stringify(value);
+  } catch (_) {
+    return String(value).slice(0, 2000);
+  }
+}
+
+function markWechatRefundRequested(id, payload = {}) {
+  const orderId = String(id || '').trim();
+  if (!orderId) return null;
+  const current = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
+  if (!current) return null;
+  if (current.status === 'refunded' || current.refunded_at || current.after_sale_status === 'refunded') {
+    throw new Error('该订单已退款，不能重复退款处理');
+  }
+  if (!hasOrderAfterSaleRequest(current)) {
+    throw new Error('该订单暂无售后申请，不能退款处理');
+  }
+  if (current.status !== 'after_sale') {
+    throw new Error('只有售后中的订单才能发起退款处理');
+  }
+  const existingRefundStatus = String(current.wechat_refund_status || '').toUpperCase();
+  const nextRefundNo = String(payload.outRefundNo || '').trim();
+  const allowExistingRefundUpdate = Boolean(payload.allowExistingRefundUpdate)
+    && nextRefundNo
+    && current.wechat_refund_no === nextRefundNo
+    && ['PENDING_SUBMIT'].includes(existingRefundStatus);
+  if (current.wechat_refund_no && ['PENDING_SUBMIT', 'PROCESSING', 'SUCCESS', 'ABNORMAL'].includes(existingRefundStatus) && !allowExistingRefundUpdate) {
+    throw new Error(existingRefundStatus === 'SUCCESS' ? '该订单微信退款已成功' : '该订单已有微信退款单，不能重复提交');
+  }
+  const now = nowIso();
+  const refundAmount = normalizeCents(payload.refundAmountCents ?? payload.refundAmount ?? current.refund_amount_cents);
+  if (refundAmount <= 0) throw new Error('请输入有效退款金额');
+  const refundNote = String(payload.refundNote ?? payload.reason ?? current.after_sale_refund_note ?? '').trim();
+  db.prepare(`
+    UPDATE orders SET
+      after_sale_status = ?,
+      refund_amount_cents = ?,
+      after_sale_refund_note = ?,
+      wechat_refund_no = ?,
+      wechat_refund_id = ?,
+      wechat_refund_status = ?,
+      wechat_refund_requested_at = ?,
+      wechat_refund_response_json = ?,
+      wechat_refund_error = ?,
+      updated_at = ?
+    WHERE id = ?
+  `).run(
+    'refund_processing',
+    refundAmount,
+    refundNote,
+    nextRefundNo,
+    String(payload.refundId || '').trim(),
+    String(payload.status || 'PROCESSING').trim(),
+    payload.requestedAt || now,
+    stringifyPayload(payload.response),
+    '',
+    now,
+    orderId
+  );
+  addFulfillmentLog(orderId, payload.action || 'wechat_refund_requested', payload.detail || '微信退款已提交，等待退款结果');
+  return getOrder(orderId);
+}
+
+function markWechatRefundFailed(id, payload = {}) {
+  const orderId = String(id || '').trim();
+  if (!orderId) return null;
+  const now = nowIso();
+  const error = String(payload.error || payload.message || '').slice(0, 1000);
+  db.prepare(`
+    UPDATE orders SET
+      after_sale_status = CASE WHEN after_sale_status = 'refund_processing' THEN 'processing' ELSE after_sale_status END,
+      wechat_refund_id = CASE WHEN ? != '' THEN ? ELSE wechat_refund_id END,
+      wechat_refund_status = ?,
+      wechat_refund_response_json = ?,
+      wechat_refund_error = ?,
+      updated_at = ?
+    WHERE id = ?
+  `).run(
+    String(payload.refundId || '').trim(),
+    String(payload.refundId || '').trim(),
+    String(payload.status || 'FAILED').trim(),
+    stringifyPayload(payload.response),
+    error,
+    now,
+    orderId
+  );
+  addFulfillmentLog(orderId, payload.action || 'wechat_refund_failed', error ? `微信退款失败：${error}` : '微信退款状态异常');
+  return getOrder(orderId);
+}
+
+function completeWechatRefund(id, payload = {}) {
+  const orderId = String(id || '').trim();
+  if (!orderId) return null;
+  const current = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
+  if (!current) return null;
+  if (!(current.status === 'refunded' || current.refunded_at || current.after_sale_status === 'refunded')) {
+    updateOrderStatus(orderId, {
+      status: 'refunded',
+      action: payload.action || 'wechat_refund_success',
+      detail: payload.detail || '微信原路退款成功',
+      refundAmount: payload.refundAmountCents ?? payload.refundAmount ?? current.refund_amount_cents,
+      refundNote: payload.refundNote ?? current.after_sale_refund_note,
+      allowRefundProcessingCompletion: true
+    });
+  }
+  const now = nowIso();
+  db.prepare(`
+    UPDATE orders SET
+      wechat_refund_no = CASE WHEN ? != '' THEN ? ELSE wechat_refund_no END,
+      wechat_refund_id = CASE WHEN ? != '' THEN ? ELSE wechat_refund_id END,
+      wechat_refund_status = ?,
+      wechat_refund_success_at = ?,
+      wechat_refund_response_json = ?,
+      wechat_refund_error = '',
+      updated_at = ?
+    WHERE id = ?
+  `).run(
+    String(payload.outRefundNo || '').trim(),
+    String(payload.outRefundNo || '').trim(),
+    String(payload.refundId || '').trim(),
+    String(payload.refundId || '').trim(),
+    String(payload.status || 'SUCCESS').trim(),
+    payload.successAt || now,
+    stringifyPayload(payload.response),
+    now,
+    orderId
+  );
+  return getOrder(orderId);
+}
+
 function importedRowValue(row, keys) {
   for (const key of keys) {
     if (row && row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
@@ -2753,8 +2946,15 @@ function payOrder(id, options = {}) {
   const current = db.prepare('SELECT * FROM orders WHERE id = ?').get(id);
   if (!current) return null;
   const optionWechatOpenid = String(options.wechatOpenid || options.openid || '').trim();
+  const optionWechatTransactionId = String(options.wechatTransactionId || options.transactionId || '').trim();
   if (current.status !== 'awaiting_payment') {
-    if (optionWechatOpenid && !current.wechat_openid) return updateOrderWechatOpenid(id, optionWechatOpenid);
+    const nextWechatOpenid = optionWechatOpenid && !current.wechat_openid ? optionWechatOpenid : current.wechat_openid;
+    const nextWechatTransactionId = optionWechatTransactionId && !current.wechat_transaction_id ? optionWechatTransactionId : current.wechat_transaction_id;
+    if (nextWechatOpenid !== current.wechat_openid || nextWechatTransactionId !== current.wechat_transaction_id) {
+      db.prepare('UPDATE orders SET wechat_openid = ?, wechat_transaction_id = ?, updated_at = ? WHERE id = ?')
+        .run(nextWechatOpenid, nextWechatTransactionId, nowIso(), id);
+      return getOrder(id);
+    }
     return rowToOrder(current);
   }
   const now = nowIso();
@@ -2772,6 +2972,7 @@ function payOrder(id, options = {}) {
   const nextStatus = current.delivery_type === 'express' ? 'awaiting_shipment' : 'awaiting_pickup';
   const nextStatusText = current.delivery_type === 'express' ? '待发货' : '待自提';
   const nextWechatOpenid = String(optionWechatOpenid || current.wechat_openid || '').trim();
+  const nextWechatTransactionId = String(optionWechatTransactionId || current.wechat_transaction_id || '').trim();
   db.exec('BEGIN');
   try {
     db.prepare(`
@@ -2780,9 +2981,10 @@ function payOrder(id, options = {}) {
         status_text = ?,
         paid_at = ?,
         wechat_openid = ?,
+        wechat_transaction_id = ?,
         updated_at = ?
       WHERE id = ?
-    `).run(nextStatus, nextStatusText, now, nextWechatOpenid, now, id);
+    `).run(nextStatus, nextStatusText, now, nextWechatOpenid, nextWechatTransactionId, now, id);
     const paidRow = db.prepare('SELECT * FROM orders WHERE id = ?').get(id);
     recordCouponUsageForOrder(paidRow);
     addFulfillmentLog(id, options.action || 'mock_paid', options.detail || '支付成功');
@@ -3056,6 +3258,10 @@ module.exports = {
   payOrder,
   updateOrderStatus,
   markWechatShippingSync,
+  markWechatReceiptConfirmed,
+  markWechatRefundRequested,
+  markWechatRefundFailed,
+  completeWechatRefund,
   importExpressShipments,
   importPickupShipments,
   orderBusinessStats,
