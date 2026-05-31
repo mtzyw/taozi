@@ -1238,7 +1238,6 @@ function renderOrders() {
         <td>
           <div class="order-table-actions">
             <button class="link-btn" data-action="view-order" data-id="${orderId}">查看详情</button>
-            ${canSyncWechatShipping(order) && (!order.wechatShipping || order.wechatShipping.status !== 'success') ? `<button class="link-btn" data-action="wechat-shipping-sync" data-id="${orderId}">同步微信发货</button>` : ''}
             ${showAfterSaleInfo ? `<button class="link-btn" data-action="order-after-sale" data-id="${orderId}">售后信息</button>` : ''}
             ${canProcessRefund(order) ? `<button class="link-btn danger-link" data-action="order-refund" data-id="${orderId}">退款处理</button>` : ''}
             ${order.status === 'awaiting_payment' ? `<button class="link-btn" data-action="order-pay" data-id="${orderId}">确认支付</button>` : ''}
@@ -2080,8 +2079,7 @@ function bindEvents() {
 	      'manual-ship',
 	      'order-after-sale',
 	      'order-refund',
-	      'order-print-label',
-	      'wechat-shipping-sync'
+	      'order-print-label'
 	    ]);
 	    const runAction = async () => {
     if (action === 'export-stats-bucket') {
@@ -2117,17 +2115,6 @@ function bindEvents() {
           { label: '备注', value: order.note || '-' }
         ]
       });
-    }
-    if (action === 'wechat-shipping-sync') {
-      const response = await api(`/api/orders/${encodeURIComponent(id)}/wechat-shipping-sync`, { method: 'POST' });
-      await load();
-      if (response.wechatShipping && response.wechatShipping.skipped) {
-        toast(response.wechatShipping.reason || '当前订单暂不需要同步');
-      } else if (response.wechatShipping && response.wechatShipping.ok) {
-        toast('微信发货信息已同步');
-      } else {
-        toast(response.wechatShipping && response.wechatShipping.error || '微信发货同步失败，请查看订单详情');
-      }
     }
     if (action === 'manual-ship') {
       const order = state.orders.find((item) => item.id === id);
