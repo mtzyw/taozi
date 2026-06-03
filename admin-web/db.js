@@ -26,6 +26,10 @@ const db = new DatabaseSync(DB_PATH);
 
 db.exec('PRAGMA foreign_keys = ON');
 
+function shouldSeedDemoData() {
+  return ['1', 'true', 'yes', 'on'].includes(String(process.env.PEACH_SEED_DEMO_DATA || '').trim().toLowerCase());
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -578,12 +582,14 @@ function seedCouponsIfNeeded() {
 function initDb() {
   migrate();
   seedShippingRuleIfNeeded();
-  seedProductsIfNeeded();
-  repairExpiredSeedProductImages();
+  if (shouldSeedDemoData()) {
+    seedProductsIfNeeded();
+    repairExpiredSeedProductImages();
+    seedPickupPointsIfNeeded();
+    seedWhitelistIfNeeded();
+    seedCouponsIfNeeded();
+  }
   ensureInitialInventoryMovementsIfNeeded();
-  seedPickupPointsIfNeeded();
-  seedWhitelistIfNeeded();
-  seedCouponsIfNeeded();
   return DB_PATH;
 }
 

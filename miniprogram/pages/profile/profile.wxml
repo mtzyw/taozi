@@ -5,7 +5,7 @@
     <text wx:else class="phone">绑定微信手机号后，可在这里查看订单和权益</text>
     <text wx:if="{{isWhitelistUser}}" class="vip">{{whitelistLabel}} 已生效</text>
     <button wx:if="{{currentPhone}}" class="wechat-phone-btn logout-btn" bindtap="logout">退出登录</button>
-    <button wx:else class="wechat-phone-btn" open-type="getPhoneNumber" loading="{{isBindingPhone}}" disabled="{{isBindingPhone}}" bindgetphonenumber="onGetPhoneNumber">一键绑定微信手机号</button>
+    <button wx:else class="wechat-phone-btn" open-type="getPhoneNumber" loading="{{isBindingPhone}}" disabled="{{isBindingPhone}}" bindgetphonenumber="onGetPhoneNumber">手机号快捷登录</button>
   </view>
 
   <view class="card">

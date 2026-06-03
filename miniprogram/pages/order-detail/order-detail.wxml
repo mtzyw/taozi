@@ -72,7 +72,7 @@
 
   <view wx:if="{{order.canApplyAfterSale || order.afterSaleInfo || order.afterSaleTip}}" class="card">
     <text class="section-title">售后服务</text>
-    <view wx:if="{{order.afterSaleInfo}}" class="line block"><text>当前售后</text><text>{{order.afterSaleInfo.status || '处理中'}}｜{{order.afterSaleInfo.reason}}</text></view>
+    <view wx:if="{{order.afterSaleInfo}}" class="line block"><text>当前售后</text><text>{{order.afterSaleStatusText}}｜{{order.afterSaleInfo.reason}}</text></view>
     <view wx:if="{{order.afterSaleInfo && order.afterSaleInfo.refundAmountText}}" class="line"><text>退款金额</text><text>¥{{order.afterSaleInfo.refundAmountText}}</text></view>
     <text wx:if="{{order.afterSaleTip && !order.afterSaleInfo && !order.canApplyAfterSale}}" class="after-sale-tip">{{order.afterSaleTip}}</text>
     <view wx:if="{{order.canApplyAfterSale && !order.afterSaleInfo}}" class="after-sale-form">

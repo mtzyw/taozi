@@ -5,17 +5,43 @@ const { formatMoney, maskPhone, statusLabel, formatDateTime } = require('../../u
 
 function fulfillmentActionLabel(action) {
   const labels = {
+    stock_locked: '已提交订单',
     mock_paid: '支付成功',
-    pickup_shipped: '自提点已到货，可领取',
-    shipped: '导入快递发货',
-    picked_up: '自提核销',
+    wechat_client_confirmed: '支付成功',
+    wechat_paid: '支付成功',
+    payment_timeout: '支付超时',
+    pickup_shipped: '自提点已到货',
+    shipped: '快递已发出',
+    picked_up: '已领取',
     completed: '订单完成',
-    after_sale: '售后处理',
+    after_sale: '售后处理中',
+    after_sale_requested: '已申请售后',
     refunded: '退款完成',
     cancelled: '订单取消',
-    wechat_receipt_confirmed: '微信确认收货'
+    inventory_restock: '库存已回补',
+    wechat_shipping_synced: '发货信息已同步',
+    wechat_shipping_failed: '发货信息同步异常',
+    wechat_receipt_confirmed: '已确认收货',
+    wechat_refund_submitting: '退款提交中',
+    wechat_refund_requested: '退款处理中',
+    wechat_refund_success: '退款成功',
+    wechat_refund_notify_success: '退款成功',
+    wechat_refund_failed: '退款异常',
+    wechat_refund_notify_failed: '退款异常',
+    wechat_refund_submit_failed: '退款提交失败'
   };
-  return labels[action] || action || '履约更新';
+  return labels[action] || '状态更新';
+}
+
+function afterSaleStatusLabel(status) {
+  const labels = {
+    requested: '已申请',
+    processing: '处理中',
+    refund_processing: '退款处理中',
+    refunded: '已退款',
+    rejected: '已驳回'
+  };
+  return labels[status] || '处理中';
 }
 
 function normalizeDiscountTrace(trace = []) {
@@ -58,8 +84,30 @@ function pickupValidityText(order) {
 
 function normalizeLogDetail(log) {
   const detail = String(log && log.detail || '').trim();
-  if (log && log.action === 'shipped') return detail.replace(/^手动发货[:：]?/, '导入快递发货：');
-  return detail;
+  if (!detail) return '';
+  const action = log && log.action;
+  const safeDetails = {
+    stock_locked: '已锁定库存，等待支付',
+    wechat_client_confirmed: '支付成功',
+    wechat_paid: '微信支付成功',
+    wechat_shipping_synced: '发货信息已同步到微信订单',
+    wechat_shipping_failed: '发货信息同步异常，请联系客服确认',
+    wechat_receipt_confirmed: '微信订单已确认收货',
+    wechat_refund_submitting: '正在提交微信原路退款',
+    wechat_refund_requested: '退款已提交，等待微信处理',
+    wechat_refund_success: '微信退款成功',
+    wechat_refund_notify_success: '微信退款成功',
+    wechat_refund_failed: '微信退款处理异常，请联系客服确认',
+    wechat_refund_notify_failed: '微信退款处理异常，请联系客服确认',
+    wechat_refund_submit_failed: '微信退款提交失败，请联系客服确认'
+  };
+  if (safeDetails[action]) return safeDetails[action];
+  const normalized = detail
+    .replace(/^手动发货[:：]?/, '导入快递发货：')
+    .replace(/^微信支付成功[:：].+$/, '微信支付成功')
+    .replace(/客户端确认支付成功/g, '支付成功');
+  if (/^[a-z][a-z0-9_./-]*$/i.test(normalized)) return '';
+  return normalized;
 }
 
 function normalizeFulfillmentLogs(logs = []) {
@@ -175,6 +223,7 @@ Page({
         wechatOrderConfirm: order.wechatOrderConfirm || null,
         canApplyAfterSale: canApplyAfterSale(order),
         afterSaleTip: getAfterSaleTip(order),
+        afterSaleStatusText: order.afterSaleInfo ? afterSaleStatusLabel(order.afterSaleInfo.status) : '',
         trace: normalizeDiscountTrace(order.discountTrace || []),
         fulfillmentLogs: normalizeFulfillmentLogs(order.fulfillmentLogs || []).map((log) => ({
           ...log,

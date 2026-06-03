@@ -10,6 +10,7 @@ const tempUploadDir = path.join(os.tmpdir(), `peach-admin-uploads-${Date.now()}`
 try { fs.unlinkSync(tempDb); } catch (_) {}
 process.env.PEACH_DB_PATH = tempDb;
 process.env.PEACH_UPLOAD_DIR = tempUploadDir;
+process.env.PEACH_SEED_DEMO_DATA = '1';
 delete process.env.WECHAT_APPID;
 delete process.env.WX_APPID;
 delete process.env.WECHAT_APP_SECRET;
