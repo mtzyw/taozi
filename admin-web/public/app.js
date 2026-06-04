@@ -818,6 +818,7 @@ function renderProducts() {
           <button class="ghost" data-action="edit-product" data-id="${productId}">编辑</button>
           <button class="ghost" data-action="status-product" data-status="on_sale" data-id="${productId}" ${listDisabled ? 'disabled' : ''} title="${escapeHtml(listTitle)}">上架</button>
           <button class="ghost" data-action="status-product" data-status="off_sale_manual" data-id="${productId}" ${unlistDisabled ? 'disabled' : ''}>下架</button>
+          <button class="danger" data-action="delete-product" data-id="${productId}">删除</button>
         </div>
       </article>
     `;
@@ -2230,6 +2231,19 @@ function bindEvents() {
       await api(`/api/products/${encodeURIComponent(id)}/status`, { method: 'POST', body: JSON.stringify({ status }) });
       await load();
       toast('商品状态已更新');
+    }
+    if (action === 'delete-product') {
+      const product = state.products.find((item) => item.id === id);
+      const name = product && product.name ? `「${product.name}」` : '该商品';
+      const ok = await showConfirm(`确定删除${name}吗？删除后商品将从后台列表移除，已有订单仍保留订单快照。`, {
+        title: '删除商品',
+        danger: true,
+        confirmText: '删除'
+      });
+      if (!ok) return;
+      await api(`/api/products/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      await load();
+      toast('商品已删除');
     }
     if (action === 'edit-pickup') {
       const point = state.pickupPoints.find((item) => item.id === id);
