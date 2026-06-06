@@ -131,6 +131,7 @@ function normalizeLocalRegions(value) {
 function detectExpressZone(address, rule = DEFAULT_SHIPPING_RULE) {
   const text = String(address || '').replace(/\s+/g, '');
   const localRegions = normalizeLocalRegions(rule.localRegions);
+  if (!text) return 'local';
   if (text && localRegions.some((region) => region && text.includes(region))) return 'local';
   return 'remote';
 }

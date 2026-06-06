@@ -64,6 +64,7 @@ function detectExpressZone(address, rule = {}) {
     ? rule.localRegions
     : ['成都', '成都市', '重庆', '重庆市'];
   const text = String(address || '').replace(/\s+/g, '');
+  if (!text) return 'local';
   if (text && localRegions.some((region) => region && text.includes(region))) return 'local';
   return 'remote';
 }
