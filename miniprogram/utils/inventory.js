@@ -110,20 +110,37 @@ function productSortTime(product, key, fallbackKey = 'updatedAt') {
   return Number.isFinite(value) ? value : 0;
 }
 
+function productManualSortOrder(product) {
+  const value = Number(product && (product.manualSortOrder ?? product.manual_sort_order));
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : null;
+}
+
+function productIsOnSaleForSort(product) {
+  return Boolean(product && (product.isOnSale || (product.status === 'on_sale' && normalizeStock(product.stock) > 0)));
+}
+
 function sortProductsForDisplay(products) {
   return [...(products || [])].sort((a, b) => {
-    const aOnSale = a.isOnSale || (a.status === 'on_sale' && normalizeStock(a.stock) > 0);
-    const bOnSale = b.isOnSale || (b.status === 'on_sale' && normalizeStock(b.stock) > 0);
+    const aOnSale = productIsOnSaleForSort(a);
+    const bOnSale = productIsOnSaleForSort(b);
     if (aOnSale !== bOnSale) return aOnSale ? -1 : 1;
-    if (aOnSale) return productSortTime(b, 'listedAt') - productSortTime(a, 'listedAt');
-    return productSortTime(b, 'statusChangedAt') - productSortTime(a, 'statusChangedAt');
+    const aPriority = productManualSortOrder(a);
+    const bPriority = productManualSortOrder(b);
+    const aManual = aPriority !== null;
+    const bManual = bPriority !== null;
+    if (aManual !== bManual) return aManual ? -1 : 1;
+    if (aManual && bManual && aPriority !== bPriority) return aPriority - bPriority;
+    const timeDiff = aOnSale
+      ? productSortTime(b, 'listedAt') - productSortTime(a, 'listedAt')
+      : productSortTime(b, 'statusChangedAt') - productSortTime(a, 'statusChangedAt');
+    if (timeDiff) return timeDiff;
+    return String(a.id || '').localeCompare(String(b.id || ''));
   });
 }
 
 function latestOnSaleProduct(products) {
-  return products
-    .filter((product) => product.isOnSale || (product.status === 'on_sale' && normalizeStock(product.stock) > 0))
-    .sort((a, b) => new Date(b.listedAt || 0).getTime() - new Date(a.listedAt || 0).getTime())[0] || null;
+  return sortProductsForDisplay(products)
+    .find((product) => productIsOnSaleForSort(product)) || null;
 }
 
 function canPurchase(product, quantity, skuIdOrPackageType = '') {

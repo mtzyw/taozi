@@ -16,8 +16,8 @@ const DEFAULT_SHIPPING_RULE = {
   remoteExpressFee: 1200,
   freeShippingThreshold: 19800,
   pickupFee: 0,
-  localRegions: ['成都', '成都市', '重庆', '重庆市'],
-  note: '自提免运费，成都/重庆按本地快递费，其他地址按省外快递费；快递费按件计算，满 198 元包邮。'
+  localRegions: ['四川', '四川省', '重庆', '重庆市', '成都', '成都市', '绵阳', '绵阳市', '德阳', '德阳市', '广元', '广元市', '遂宁', '遂宁市', '内江', '内江市', '乐山', '乐山市', '南充', '南充市', '眉山', '眉山市', '宜宾', '宜宾市', '广安', '广安市', '达州', '达州市', '雅安', '雅安市', '巴中', '巴中市', '资阳', '资阳市', '自贡', '自贡市', '攀枝花', '攀枝花市', '泸州', '泸州市', '甘孜', '甘孜州', '甘孜藏族自治州', '阿坝', '阿坝州', '阿坝藏族羌族自治州', '凉山', '凉山州', '凉山彝族自治州', '万州', '万州区', '黔江', '黔江区', '涪陵', '涪陵区', '渝中', '渝中区', '大渡口', '大渡口区', '江北区', '沙坪坝', '沙坪坝区', '九龙坡', '九龙坡区', '南岸区', '北碚', '北碚区', '渝北', '渝北区', '巴南', '巴南区', '长寿', '长寿区', '江津', '江津区', '合川', '合川区', '永川', '永川区', '南川', '南川区', '綦江', '綦江区', '大足', '大足区', '璧山', '璧山区', '铜梁', '铜梁区', '潼南', '潼南区', '荣昌', '荣昌区', '开州', '开州区', '梁平', '梁平区', '武隆', '武隆区', '城口', '城口县', '丰都', '丰都县', '垫江', '垫江县', '忠县', '云阳', '云阳县', '奉节', '奉节县', '巫山', '巫山县', '巫溪', '巫溪县', '石柱', '石柱县', '秀山', '秀山县', '酉阳', '酉阳县', '彭水', '彭水县'],
+  note: '自提免运费，四川/重庆按省内快递费，其他地址按省外快递费；快递费按件计算，满 198 元包邮。'
 };
 const INBOUND_INVENTORY_TYPES = ['initial_stock', 'stock_restock', 'stock_adjust_in'];
 
@@ -161,7 +161,7 @@ function normalizeIdList(value) {
 
 function normalizeLocalRegions(value) {
   const regions = normalizeIdList(value);
-  return regions.length ? regions : DEFAULT_SHIPPING_RULE.localRegions;
+  return [...new Set([...DEFAULT_SHIPPING_RULE.localRegions, ...regions])];
 }
 
 function detectExpressZone(address, rule = getShippingRule()) {
@@ -213,6 +213,7 @@ function migrate() {
       detail_text TEXT DEFAULT '',
       listed_at TEXT NOT NULL,
       status_changed_at TEXT DEFAULT '',
+      manual_sort_order INTEGER DEFAULT NULL,
       updated_at TEXT NOT NULL
     );
 
@@ -429,6 +430,7 @@ function migrate() {
   ensureColumn('products', 'detail_text', "TEXT DEFAULT ''");
   ensureColumn('products', 'pickup_point_ids_json', "TEXT NOT NULL DEFAULT '[]'");
   ensureColumn('products', 'status_changed_at', "TEXT DEFAULT ''");
+  ensureColumn('products', 'manual_sort_order', "INTEGER DEFAULT NULL");
   ensureColumn('products', 'sale_type', "TEXT NOT NULL DEFAULT 'presale'");
   ensureColumn('products', 'customer_contact', "TEXT DEFAULT ''");
   ensureColumn('products', 'customer_phone', "TEXT DEFAULT ''");
@@ -624,6 +626,10 @@ function rowToProduct(row) {
   const images = parseJson(row.images_json, []);
   const normalizedImages = images.length ? images : (row.cover_image ? [row.cover_image] : []);
   const deliveryMethods = mergeSkuDeliveryMethods(skus, parseJson(row.delivery_methods_json, []));
+  const manualSortOrder = Number(row.manual_sort_order);
+  const normalizedManualSortOrder = Number.isFinite(manualSortOrder) && manualSortOrder > 0
+    ? Math.floor(manualSortOrder)
+    : null;
   return {
     id: row.id,
     name: row.name,
@@ -658,6 +664,8 @@ function rowToProduct(row) {
     detailText: row.detail_text || '',
     listedAt: row.listed_at,
     statusChangedAt: row.status_changed_at || row.updated_at || row.listed_at,
+    manualSortOrder: normalizedManualSortOrder,
+    isManualPriority: normalizedManualSortOrder !== null,
     updatedAt: row.updated_at,
     skus,
     isOnSale: status === 'on_sale' && stock > 0,
@@ -732,15 +740,31 @@ function productSortTime(product, key, fallbackKey = 'updatedAt') {
   return Number.isFinite(value) ? value : 0;
 }
 
+function productManualSortOrder(product) {
+  const value = Number(product && (product.manualSortOrder ?? product.manual_sort_order));
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : null;
+}
+
+function productIsOnSaleForSort(product) {
+  return Boolean(product && (product.isOnSale || (product.status === 'on_sale' && Number(product.stock || 0) > 0)));
+}
+
 function sortProductsForDisplay(products) {
-  return [...products].sort((a, b) => {
-    const aOnSale = a.isOnSale || (a.status === 'on_sale' && Number(a.stock || 0) > 0);
-    const bOnSale = b.isOnSale || (b.status === 'on_sale' && Number(b.stock || 0) > 0);
+  return [...(products || [])].sort((a, b) => {
+    const aOnSale = productIsOnSaleForSort(a);
+    const bOnSale = productIsOnSaleForSort(b);
     if (aOnSale !== bOnSale) return aOnSale ? -1 : 1;
-    if (aOnSale) {
-      return productSortTime(b, 'listedAt') - productSortTime(a, 'listedAt');
-    }
-    return productSortTime(b, 'statusChangedAt') - productSortTime(a, 'statusChangedAt');
+    const aPriority = productManualSortOrder(a);
+    const bPriority = productManualSortOrder(b);
+    const aManual = aPriority !== null;
+    const bManual = bPriority !== null;
+    if (aManual !== bManual) return aManual ? -1 : 1;
+    if (aManual && bManual && aPriority !== bPriority) return aPriority - bPriority;
+    const timeDiff = aOnSale
+      ? productSortTime(b, 'listedAt') - productSortTime(a, 'listedAt')
+      : productSortTime(b, 'statusChangedAt') - productSortTime(a, 'statusChangedAt');
+    if (timeDiff) return timeDiff;
+    return String(a.id || '').localeCompare(String(b.id || ''));
   });
 }
 
@@ -978,6 +1002,68 @@ function updateProductStatus(id, status) {
 
 function deleteProduct(id) {
   return db.prepare('DELETE FROM products WHERE id = ?').run(id).changes > 0;
+}
+
+function compactProductPriorityOrders() {
+  const rows = db.prepare(`
+    SELECT id
+    FROM products
+    WHERE manual_sort_order IS NOT NULL AND manual_sort_order > 0
+    ORDER BY manual_sort_order ASC, listed_at DESC, updated_at DESC, id ASC
+  `).all();
+  const now = nowIso();
+  const stmt = db.prepare('UPDATE products SET manual_sort_order = ?, updated_at = ? WHERE id = ?');
+  rows.forEach((row, index) => {
+    stmt.run(index + 1, now, row.id);
+  });
+}
+
+function updateProductPriority(id, action = 'set') {
+  const normalizedAction = String(action || 'set').trim();
+  if (!['set', 'up', 'down', 'clear'].includes(normalizedAction)) throw new Error('不支持的排序操作');
+  const product = getProduct(id);
+  if (!product) throw new Error('商品不存在');
+  const now = nowIso();
+  const currentOrder = productManualSortOrder(product);
+
+  if (normalizedAction === 'clear') {
+    db.prepare('UPDATE products SET manual_sort_order = NULL, updated_at = ? WHERE id = ?').run(now, id);
+    compactProductPriorityOrders();
+    return getProduct(id);
+  }
+
+  if (normalizedAction === 'set') {
+    if (currentOrder !== null) return product;
+    compactProductPriorityOrders();
+    const maxRow = db.prepare('SELECT COALESCE(MAX(manual_sort_order), 0) AS max_order FROM products').get();
+    db.prepare('UPDATE products SET manual_sort_order = ?, updated_at = ? WHERE id = ?').run(Number(maxRow.max_order || 0) + 1, now, id);
+    return getProduct(id);
+  }
+
+  if (currentOrder === null) throw new Error('请先将商品设为优先排序');
+  compactProductPriorityOrders();
+  const currentProduct = getProduct(id);
+  const currentOnSale = productIsOnSaleForSort(currentProduct);
+  const priorityProducts = listProducts().filter((item) => (
+    productManualSortOrder(item) !== null && productIsOnSaleForSort(item) === currentOnSale
+  ));
+  const currentIndex = priorityProducts.findIndex((item) => item.id === id);
+  if (currentIndex < 0) return currentProduct;
+  const nextIndex = normalizedAction === 'up' ? currentIndex - 1 : currentIndex + 1;
+  if (nextIndex < 0 || nextIndex >= priorityProducts.length) return currentProduct;
+  const target = priorityProducts[nextIndex];
+  db.exec('BEGIN');
+  try {
+    db.prepare('UPDATE products SET manual_sort_order = ?, updated_at = ? WHERE id = ?')
+      .run(productManualSortOrder(target), now, id);
+    db.prepare('UPDATE products SET manual_sort_order = ?, updated_at = ? WHERE id = ?')
+      .run(productManualSortOrder(currentProduct), now, target.id);
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+  return getProduct(id);
 }
 
 function refreshProductStockStatus(productId, now = nowIso()) {
@@ -1289,7 +1375,7 @@ function calculateShippingFee(deliveryType, goodsAmountCents, expressInfo = {}, 
     fee,
     unitFee,
     quantity: count,
-    label: fee > 0 ? (zone === 'local' ? '本地快递运费' : '省外快递运费') : '快递免运费',
+    label: fee > 0 ? (zone === 'local' ? '省内快递运费' : '省外快递运费') : '快递免运费',
     zone,
     rule
   };
@@ -3228,6 +3314,7 @@ module.exports = {
   getProduct,
   upsertProduct,
   updateProductStatus,
+  updateProductPriority,
   updateProductSkuStock,
   deleteProduct,
   listPickupPoints,

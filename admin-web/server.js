@@ -1944,6 +1944,17 @@ async function handleApi(req, res, url) {
     return;
   }
 
+  const productPriorityMatch = pathname.match(/^\/api\/products\/([^/]+)\/priority$/);
+  if (productPriorityMatch && method === 'POST') {
+    const body = await readBody(req);
+    const productId = decodeURIComponent(productPriorityMatch[1]);
+    const priorityAction = String(body.action || 'set').trim();
+    const product = db.updateProductPriority(productId, priorityAction);
+    db.addOperationLog({ action: 'product.priority', targetType: 'product', targetId: productId, detail: priorityAction });
+    sendJson(res, { product });
+    return;
+  }
+
   const productSkuStockMatch = pathname.match(/^\/api\/products\/([^/]+)\/skus\/([^/]+)\/stock$/);
   if (productSkuStockMatch && method === 'POST') {
     const body = await readBody(req);

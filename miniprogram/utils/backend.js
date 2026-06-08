@@ -48,6 +48,11 @@ function mergeSkuDeliveryMethods(skus, fallbackMethods = ['pickup']) {
   return merged.length ? merged : normalizeDeliveryMethods(fallbackMethods);
 }
 
+function normalizeManualSortOrder(value) {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) && numberValue > 0 ? Math.floor(numberValue) : null;
+}
+
 function normalizeProduct(product) {
   const coverImage = normalizeServerImageUrl(product.coverImage || product.cover_image);
   const productDeliveryMethods = normalizeDeliveryMethods(product.deliveryMethods);
@@ -66,6 +71,7 @@ function normalizeProduct(product) {
   const soldCount = normalizeStock(product.soldCount);
   const lockedCount = normalizeStock(product.lockedCount);
   const status = stock <= 0 && product.status === 'on_sale' ? 'sold_out_auto' : product.status;
+  const manualSortOrder = normalizeManualSortOrder(product.manualSortOrder ?? product.manual_sort_order);
   return {
     ...product,
     saleType: product.saleType === 'direct' ? 'direct' : 'presale',
@@ -88,6 +94,8 @@ function normalizeProduct(product) {
     tags: Array.isArray(product.tags) ? product.tags : [],
     isOnSale: status === 'on_sale' && stock > 0,
     isSoldOut: stock <= 0 || status === 'sold_out_auto',
+    manualSortOrder,
+    isManualPriority: manualSortOrder !== null,
     statusChangedAt: product.statusChangedAt || product.status_changed_at || product.updatedAt || product.updated_at || product.listedAt,
     source: 'backend'
   };

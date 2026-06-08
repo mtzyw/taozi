@@ -62,7 +62,7 @@ function getSkuDeliveryMethods(sku, product) {
 function detectExpressZone(address, rule = {}) {
   const localRegions = Array.isArray(rule.localRegions) && rule.localRegions.length
     ? rule.localRegions
-    : ['成都', '成都市', '重庆', '重庆市'];
+    : ['四川', '四川省', '重庆', '重庆市', '成都', '成都市', '绵阳', '绵阳市', '德阳', '德阳市', '广元', '广元市', '遂宁', '遂宁市', '内江', '内江市', '乐山', '乐山市', '南充', '南充市', '眉山', '眉山市', '宜宾', '宜宾市', '广安', '广安市', '达州', '达州市', '雅安', '雅安市', '巴中', '巴中市', '资阳', '资阳市', '自贡', '自贡市', '攀枝花', '攀枝花市', '泸州', '泸州市', '甘孜', '甘孜州', '甘孜藏族自治州', '阿坝', '阿坝州', '阿坝藏族羌族自治州', '凉山', '凉山州', '凉山彝族自治州', '万州', '万州区', '黔江', '黔江区', '涪陵', '涪陵区', '渝中', '渝中区', '大渡口', '大渡口区', '江北区', '沙坪坝', '沙坪坝区', '九龙坡', '九龙坡区', '南岸区', '北碚', '北碚区', '渝北', '渝北区', '巴南', '巴南区', '长寿', '长寿区', '江津', '江津区', '合川', '合川区', '永川', '永川区', '南川', '南川区', '綦江', '綦江区', '大足', '大足区', '璧山', '璧山区', '铜梁', '铜梁区', '潼南', '潼南区', '荣昌', '荣昌区', '开州', '开州区', '梁平', '梁平区', '武隆', '武隆区', '城口', '城口县', '丰都', '丰都县', '垫江', '垫江县', '忠县', '云阳', '云阳县', '奉节', '奉节县', '巫山', '巫山县', '巫溪', '巫溪县', '石柱', '石柱县', '秀山', '秀山县', '酉阳', '酉阳县', '彭水', '彭水县'];
   const text = String(address || '').replace(/\s+/g, '');
   if (!text) return 'local';
   if (text && localRegions.some((region) => region && text.includes(region))) return 'local';
@@ -93,7 +93,7 @@ function calculateShippingFee(rule, deliveryType, goodsAmount, expressAddress = 
     fee,
     unitFee,
     quantity: count,
-    label: fee > 0 ? (zone === 'local' ? '本地快递运费' : '省外快递运费') : '快递免运费',
+    label: fee > 0 ? (zone === 'local' ? '省内快递运费' : '省外快递运费') : '快递免运费',
     zone,
     rule
   };

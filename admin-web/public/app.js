@@ -732,7 +732,7 @@ function renderCheckboxChoices(selector, items, selectedIds, emptyText, buildLab
 
 function selectableProducts() {
   return state.products.filter((product) => (
-    product.isOnSale || (product.status === 'on_sale' && Number(product.stock || 0) > 0)
+    productIsAvailableForSale(product)
   ));
 }
 
@@ -774,7 +774,22 @@ function productCanBeListed(product) {
   return skus.length > 0 && skus.every((sku) => Number(sku.stock || 0) > 0);
 }
 
+function productManualSortOrder(product) {
+  const value = Number(product && product.manualSortOrder);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : null;
+}
+
+function productIsAvailableForSale(product) {
+  return Boolean(product && (product.isOnSale || (product.status === 'on_sale' && Number(product.stock || 0) > 0)));
+}
+
 function renderProducts() {
+  const priorityGroups = { onSale: [], unavailable: [] };
+  state.products.forEach((product) => {
+    if (productManualSortOrder(product) === null) return;
+    const key = productIsAvailableForSale(product) ? 'onSale' : 'unavailable';
+    priorityGroups[key].push(String(product.id));
+  });
   $('#productsList').innerHTML = state.products.map((product) => {
     const stock = (product.skus || []).reduce((sum, sku) => sum + Number(sku.stock || 0), 0);
     const soldCount = Number(product.soldCount || 0);
@@ -800,6 +815,18 @@ function renderProducts() {
     const listDisabled = isOnSaleStatus;
     const unlistDisabled = product.status === 'off_sale_manual' || isSoldOutStatus;
     const listTitle = !listDisabled && !canList ? '上架前需要所有规格库存都大于 0' : '';
+    const priorityOrder = productManualSortOrder(product);
+    const priorityKey = productIsAvailableForSale(product) ? 'onSale' : 'unavailable';
+    const priorityIndex = priorityGroups[priorityKey].indexOf(String(product.id));
+    const priorityUpDisabled = priorityOrder === null || priorityIndex <= 0;
+    const priorityDownDisabled = priorityOrder === null || priorityIndex < 0 || priorityIndex >= priorityGroups[priorityKey].length - 1;
+    const priorityActions = priorityOrder === null
+      ? `<button class="ghost" data-action="priority-product" data-priority-action="set" data-id="${productId}">设为优先</button>`
+      : `
+          <button class="ghost" data-action="priority-product" data-priority-action="up" data-id="${productId}" ${priorityUpDisabled ? 'disabled' : ''}>上移</button>
+          <button class="ghost" data-action="priority-product" data-priority-action="down" data-id="${productId}" ${priorityDownDisabled ? 'disabled' : ''}>下移</button>
+          <button class="ghost" data-action="priority-product" data-priority-action="clear" data-id="${productId}">取消优先</button>
+        `;
     return `
       <article class="item">
         <img class="thumb" src="${escapeHtml(safeImageSrc(product.coverImage))}" alt="" />
@@ -812,10 +839,14 @@ function renderProducts() {
           <div class="meta">${escapeHtml(batch || '未设置预售批次')}</div>
           <div class="meta">适用自提点：${escapeHtml(formatPickupPointScope(product.pickupPointIds))}</div>
           <div class="meta">图册 ${(product.images || []).length} 张｜${product.detailText ? '已填写详情' : '未填写详情'}</div>
-          <div class="tags">${(product.tags || []).map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
+          <div class="tags">
+            ${priorityOrder !== null ? `<span class="tag">优先 #${escapeHtml(priorityOrder)}</span>` : ''}
+            ${(product.tags || []).map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
+          </div>
         </div>
         <div class="actions">
           <button class="ghost" data-action="edit-product" data-id="${productId}">编辑</button>
+          ${priorityActions}
           <button class="ghost" data-action="status-product" data-status="on_sale" data-id="${productId}" ${listDisabled ? 'disabled' : ''} title="${escapeHtml(listTitle)}">上架</button>
           <button class="ghost" data-action="status-product" data-status="off_sale_manual" data-id="${productId}" ${unlistDisabled ? 'disabled' : ''}>下架</button>
           <button class="danger" data-action="delete-product" data-id="${productId}">删除</button>
@@ -904,7 +935,7 @@ function renderShippingRule() {
     remoteExpressFeeYuan: money(rule.remoteExpressFee ?? rule.expressBaseFee),
     freeShippingThresholdYuan: money(rule.freeShippingThreshold),
     pickupFeeYuan: money(rule.pickupFee),
-    localRegionsText: (rule.localRegions || ['成都', '成都市', '重庆', '重庆市']).join(' '),
+    localRegionsText: (rule.localRegions || ['四川', '四川省', '重庆', '重庆市', '成都', '成都市', '绵阳', '绵阳市', '德阳', '德阳市', '渝北区', '沙坪坝区']).join(' '),
     note: rule.note || ''
   });
 }
@@ -2080,6 +2111,7 @@ function bindEvents() {
     }
     const lockedActions = new Set([
       'status-product',
+      'priority-product',
       'toggle-pickup',
       'delete-pickup',
       'delete-whitelist-rule',
@@ -2231,6 +2263,15 @@ function bindEvents() {
       await api(`/api/products/${encodeURIComponent(id)}/status`, { method: 'POST', body: JSON.stringify({ status }) });
       await load();
       toast('商品状态已更新');
+    }
+    if (action === 'priority-product') {
+      const priorityAction = button.dataset.priorityAction || 'set';
+      await api(`/api/products/${encodeURIComponent(id)}/priority`, {
+        method: 'POST',
+        body: JSON.stringify({ action: priorityAction })
+      });
+      await load();
+      toast(priorityAction === 'clear' ? '已取消优先排序' : '优先排序已更新');
     }
     if (action === 'delete-product') {
       const product = state.products.find((item) => item.id === id);
