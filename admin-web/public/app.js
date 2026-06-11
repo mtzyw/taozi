@@ -1268,7 +1268,7 @@ function renderOrders() {
         <td class="cell-ellipsis" title="${escapeHtml(orderBatchName(order))}">${escapeHtml(orderBatchName(order))}</td>
         <td>${escapeHtml(saleTypeText(order.saleType))}</td>
         <td class="cell-ellipsis" title="${escapeHtml(orderContactName(order))}">${escapeHtml(orderContactName(order))}</td>
-        <td class="cell-mono">${escapeHtml(maskPhone(orderContactPhone(order)))}</td>
+        <td class="cell-mono">${escapeHtml(orderContactPhone(order))}</td>
         <td class="cell-mono cell-ellipsis" title="${orderId}">${orderId}</td>
         <td>${escapeHtml(deliveryTypeText(order.deliveryType))}</td>
         <td class="cell-ellipsis" title="${escapeHtml(destinationTitle)}">${escapeHtml(destination)}</td>
@@ -2144,7 +2144,7 @@ function bindEvents() {
           { label: '订单编号', value: order.id },
           { label: '批次名称', value: orderBatchName(order) },
           { label: '销售类型', value: saleTypeText(order.saleType) },
-          { label: '联系人', value: `${orderContactName(order)}｜${maskPhone(orderContactPhone(order))}` },
+          { label: '联系人', value: `${orderContactName(order)}｜${orderContactPhone(order)}` },
           { label: '配送方式', value: deliveryTypeText(order.deliveryType) },
           { label: '自提点/地址', value: orderDestinationText(order) },
           { label: '履约时间', value: orderFulfillmentText(order) },
